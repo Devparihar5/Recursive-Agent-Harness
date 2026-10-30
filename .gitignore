@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+.deps/
+.tmp/
+.env
+build/
+dist/
+*.egg-info/
+runs/
+improvement_library/
+.omx/
+GAPS.md

@@ -1,0 +1,1 @@
+Inspect the task domain, source files and reference trajectory. Return JSON patches to executable harness components that address observable domain workflow gaps. Do not carry task facts into reusable guidance without checking evidence.
