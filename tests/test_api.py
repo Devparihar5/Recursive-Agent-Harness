@@ -77,6 +77,7 @@ def test_cancel_run_persists_terminal_status_and_ends_stream(tmp_path):
         started = client.post(f"/api/tasks/{task_id}/run", json={"mode": "base", "k": 0})
         assert started.status_code == 200
         run_id = started.json()["run_id"]
+        assert client.get(f"/api/runs/{run_id}").json()["mode"] == "base"
 
         cancelled = client.delete(f"/api/runs/{run_id}")
         assert cancelled.status_code == 200

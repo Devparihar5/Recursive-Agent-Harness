@@ -10,6 +10,8 @@ This is the concise working backlog. The current implementation is described in 
 - [x] Three bundled examples can be launched from New task; quick base-only and full improvement actions are separate. `NewTask` TypeScript errors were resolved (2026-11-02).
 - [x] Execution defaults can be saved without creating a task; custom run buttons appear only when an objective is entered (2026-11-02).
 - [x] Active runs can be cancelled from the live view; API, run records, and SSE reach a terminal cancelled state (2026-11-02).
+- [x] Run progress uses a readable phase timeline with live completion/current status and a narrow-screen list (2026-11-02).
+- [x] Tools evidence tab renders object-valued actions without crashing the page (2026-11-02).
 - [x] Architecture, design, memory, requirements, rules, and task documents created under `docs/` (2026-11-02).
 
 ## Pending

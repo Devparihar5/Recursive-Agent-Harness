@@ -41,7 +41,7 @@ flowchart LR
 3. In improvement mode, the engine probes baseline and edited harnesses, records behavioral contrasts, composes candidate changes, and probes successor harnesses. Parallel mode explores `k` branches; sequential mode chains `k` rounds (`1 <= k <= 5`).
 4. `BlindSelector` sees anonymous deliverables. `Reflector` can produce an evidence-backed lesson. The library stores a selected changed harness only when the required lesson and helped attribution are present. Later tasks still start from the common base; retrieved lessons inform editors rather than replacing it.
 5. Run records live under `runs/<task_id>/`; library entries live under `improvement_library/<domain>/`. Both directories are local runtime data and are ignored by Git.
-6. An active run can be cancelled through `DELETE /api/runs/{run_id}`. The API cancels its asyncio task, persists a terminal job event, and closes the SSE stream; the executor records a cancelled execution when cancellation occurs during a model/tool turn.
+6. An active run can be cancelled through `DELETE /api/runs/{run_id}`. The API cancels its asyncio task, persists a terminal job event, and closes the SSE stream; the executor records a cancelled execution when cancellation occurs during a model/tool turn. Job records include mode and `k` from launch so the dashboard can render the correct progress timeline before completion.
 
 ## Technology and boundaries
 

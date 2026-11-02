@@ -1,0 +1,181 @@
+.run-progress-panel {
+  margin-bottom: 23px;
+}
+
+.pipeline-progress {
+  padding: 22px;
+}
+
+.pipeline-progress-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+}
+
+.pipeline-progress-eyebrow {
+  color: var(--green);
+  font: 10px ui-monospace, monospace;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+}
+
+.pipeline-progress-summary h3 {
+  margin: 7px 0 2px;
+  color: var(--ink);
+  font-size: 19px;
+  font-weight: 600;
+}
+
+.pipeline-progress-summary p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.pipeline-progress-count {
+  flex-shrink: 0;
+  color: var(--muted);
+  font: 10px ui-monospace, monospace;
+}
+
+.pipeline-progress-track {
+  height: 5px;
+  margin: 18px 0 13px;
+  border-radius: 4px;
+  background: var(--soft);
+  overflow: hidden;
+}
+
+.pipeline-progress-track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--green);
+  transition: width .35s ease;
+}
+
+.pipeline-flow {
+  height: 178px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.pipeline-flow .react-flow__handle {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pipeline-flow .react-flow__node-default {
+  text-align: left;
+}
+
+.pipeline-node {
+  height: 112px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--panel);
+  color: var(--ink);
+}
+
+.pipeline-node--active {
+  border-color: #91ad71;
+  background: var(--soft);
+  box-shadow: 0 0 0 3px rgba(145, 173, 113, .14);
+}
+
+.pipeline-node--completed {
+  border-color: #c8dab8;
+  background: #eef5e8;
+}
+
+.pipeline-node--failed {
+  border-color: #d7a48d;
+  background: #fff0ea;
+}
+
+.pipeline-node--cancelled,
+.pipeline-node--interrupted {
+  border-color: var(--line);
+  background: var(--soft);
+}
+
+.pipeline-node-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 11px;
+}
+
+.pipeline-node-mark {
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  background: var(--soft);
+  color: var(--green);
+  font: 11px ui-monospace, monospace;
+}
+
+.pipeline-node--active .pipeline-node-mark,
+.pipeline-node--completed .pipeline-node-mark {
+  background: var(--green);
+  color: var(--panel);
+}
+
+.pipeline-node-state {
+  color: var(--muted);
+  font: 9px ui-monospace, monospace;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+
+.pipeline-node strong,
+.pipeline-node small {
+  display: block;
+}
+
+.pipeline-node strong {
+  margin-bottom: 5px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.pipeline-node small {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.pipeline-mobile-stages {
+  display: none;
+}
+
+[data-theme=dark] .pipeline-node--completed {
+  border-color: #536d42;
+  background: #2b3b25;
+}
+
+[data-theme=dark] .pipeline-node--failed {
+  border-color: #835746;
+  background: #3a2922;
+}
+
+@media (max-width: 760px) {
+  .pipeline-progress { padding: 17px; }
+  .pipeline-progress-summary { align-items: flex-start; }
+  .pipeline-progress-count { margin-top: 3px; }
+  .pipeline-flow { display: none; }
+  .pipeline-mobile-stages { display: grid; gap: 8px; margin: 16px 0 0; padding: 0; list-style: none; }
+  .pipeline-mobile-stage { display: flex; align-items: center; gap: 12px; padding: 11px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); }
+  .pipeline-mobile-stage--active { border-color: #91ad71; background: var(--soft); }
+  .pipeline-mobile-stage--completed { background: #eef5e8; }
+  .pipeline-mobile-stage strong, .pipeline-mobile-stage small { display: block; }
+  .pipeline-mobile-stage strong { font-size: 12px; font-weight: 600; }
+  .pipeline-mobile-stage small { margin-top: 2px; color: var(--muted); font-size: 10px; }
+  [data-theme=dark] .pipeline-mobile-stage--completed { background: #2b3b25; }
+}

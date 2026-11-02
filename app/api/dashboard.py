@@ -195,7 +195,8 @@ def register_dashboard_api(app, service):
             runner = Pipeline(service.config.model_copy(update=overrides),
                               library_root=service.library.root, workspace_root=root)
         identifier = uuid4().hex
-        job = {"run_id": identifier, "task_id": task_id, "status": "running", "events": [], "created_at": utc_now()}
+        job = {"run_id": identifier, "task_id": task_id, "mode": mode, "k": k,
+               "status": "running", "events": [], "created_at": utc_now()}
         jobs[identifier] = job
         def emit(event):
             emit_to(job, event)
@@ -212,7 +213,7 @@ def register_dashboard_api(app, service):
                 raise
             except Exception as exc:
                 job["status"] = "failed"
-                emit({"type": "error", "error": str(exc)})
+                emit({"type": "error", "error": f"{type(exc).__name__}: {exc}".rstrip(": ")})
         future = asyncio.create_task(work())
         futures[identifier] = future
         def on_done(completed):
@@ -223,6 +224,167 @@ def register_dashboard_api(app, service):
                       "error": "Run cancelled" if completed.cancelled() else "Run stopped unexpectedly"})
         future.add_done_callback(on_done)
         return {"run_id": identifier, "status": "running", "stream_url": f"/api/runs/{identifier}/stream"}
+
+    @route("get", "/tasks/{task_id}/resumable")
+    async def resumable(task_id: str):
+        """Return resume eligibility: whether a failed/interrupted run can be retried."""
+        task_for(task_id)
+
+        # Find the last job for this task.
+        job_paths = sorted(root.glob(f"{safe(task_id)}/jobs/*.json"))
+        if not job_paths:
+            return {"resumable": False, "reason": "No previous runs found"}
+        try:
+            last_job = read(job_paths[-1])
+        except Exception:
+            return {"resumable": False, "reason": "Could not read last job record"}
+
+        last_status = last_job.get("status")
+        last_mode = last_job.get("mode", "base")
+        last_k = last_job.get("k", 0)
+
+        # Only offer resume when the last run actually stopped abnormally.
+        if last_status not in {"failed", "interrupted", "cancelled"}:
+            return {"resumable": False, "reason": f"Last run status is {last_status!r}"}
+
+        # Check for a pipeline.json checkpoint (written by newer pipeline code).
+        pipeline_path = root / safe(task_id) / "pipeline.json"
+        checkpoint_stage = ""
+        resume_label = "Retry"
+        if pipeline_path.exists():
+            try:
+                checkpoint = read(pipeline_path)
+                checkpoint_stage = checkpoint.get("_checkpoint_stage", "")
+                # If the pipeline fully completed, there's nothing to resume.
+                if checkpoint.get("deliverable") and not checkpoint_stage:
+                    return {"resumable": False, "reason": "Pipeline already completed successfully"}
+                if checkpoint_stage:
+                    resume_label = f"Resume from '{checkpoint_stage}'"
+            except Exception:
+                pass
+
+        return {
+            "resumable": True,
+            "checkpoint_stage": checkpoint_stage,
+            "mode": last_mode,
+            "k": last_k,
+            "last_status": last_status,
+            "resume_label": resume_label,
+            "reason": (f"Checkpoint at stage '{checkpoint_stage}' — skips completed work"
+                       if checkpoint_stage else
+                       f"Last run {last_status} — will retry from the beginning"),
+        }
+
+    @route("post", "/tasks/{task_id}/resume")
+    async def resume_run(task_id: str, request: Request):
+        """Re-launch a failed/interrupted run, picking up from the last checkpoint."""
+        task = task_for(task_id)
+        body = await request.body()
+        try:
+            data = json.loads(body) if body else {}
+        except (ValueError, AttributeError) as exc:
+            raise HTTPException(400, "Expected a JSON object") from exc
+
+        # Load checkpoint to determine mode/k defaults.
+        pipeline_path = root / safe(task_id) / "pipeline.json"
+        checkpoint = {}
+        if pipeline_path.exists():
+            try:
+                checkpoint = read(pipeline_path)
+            except Exception:
+                pass
+
+        # Caller may override mode/k; otherwise inherit from checkpoint or last job.
+        job_paths = sorted(root.glob(f"{safe(task_id)}/jobs/*.json"))
+        last_mode, last_k = checkpoint.get("mode", "base"), checkpoint.get("k", 0)
+        if job_paths:
+            try:
+                last_job = read(job_paths[-1])
+                last_mode = last_job.get("mode", last_mode)
+                last_k = last_job.get("k", last_k)
+            except Exception:
+                pass
+
+        mode = data.get("mode", last_mode)
+        k = data.get("k", last_k)
+
+        # If no checkpoint stage exists, fall back to a plain retry (resume=False).
+        # The pipeline will start fresh but this is still useful from the UI.
+        has_checkpoint = bool(checkpoint.get("_checkpoint_stage"))
+
+        # Validate mode/k.
+        if mode == "base":
+            k = 0
+        elif mode not in {"parallel", "sequential"} or type(k) is not int or not 1 <= k <= 5:
+            raise HTTPException(400, "mode must be base with k=0, or parallel/sequential with k=1..5")
+
+        # Apply any per-run overrides (model, timeout, max_steps).
+        overrides = {}
+        requested_model = data.get("model") or task.metadata.get("model")
+        if requested_model and requested_model != service.config.model:
+            if not isinstance(requested_model, str) or not re.fullmatch(r"[A-Za-z0-9._:/-]{1,120}", requested_model):
+                raise HTTPException(400, "Invalid model name")
+            overrides["model"] = requested_model
+        if "timeout_seconds" in data:
+            if type(data["timeout_seconds"]) not in {int, float} or not 1 <= data["timeout_seconds"] <= 1800:
+                raise HTTPException(400, "timeout_seconds must be 1..1800")
+            overrides["timeout_seconds"] = data["timeout_seconds"]
+        if "max_steps" in data:
+            if type(data["max_steps"]) is not int or not 1 <= data["max_steps"] <= 100:
+                raise HTTPException(400, "max_steps must be 1..100")
+            overrides["max_steps"] = data["max_steps"]
+
+        runner = service
+        if overrides:
+            from app.orchestration.pipeline import Pipeline
+            runner = Pipeline(service.config.model_copy(update=overrides),
+                              library_root=service.library.root, workspace_root=root)
+
+        identifier = uuid4().hex
+        job = {"run_id": identifier, "task_id": task_id, "mode": mode, "k": k,
+               "status": "running", "events": [], "created_at": utc_now(),
+               "resumed": True, "checkpoint_stage": checkpoint.get("_checkpoint_stage")}
+        jobs[identifier] = job
+
+        def emit(event):
+            emit_to(job, event)
+
+        emit({"type": "stage", "stage": "TASK RECEIVED (resuming)"})
+
+        async def work():
+            try:
+                if mode == "base":
+                    job["result"] = await runner.run_base(task, event_callback=emit, resume=has_checkpoint)
+                else:
+                    job["result"] = await runner.run(task, mode=mode, k=k,
+                                                      event_callback=emit, resume=has_checkpoint)
+                job["status"] = "completed" if job["result"].get("deliverable") else "failed"
+                emit({"type": "result",
+                      "selected_execution_id": job["result"].get("selected_execution_id"),
+                      "library_entry": job["result"].get("library_entry"),
+                      "status": job["status"]})
+            except asyncio.CancelledError:
+                job["status"] = "cancelled"
+                emit({"type": "run.cancelled", "error": "Run cancelled"})
+                raise
+            except Exception as exc:
+                job["status"] = "failed"
+                emit({"type": "error", "error": f"{type(exc).__name__}: {exc}".rstrip(": ")})
+
+        future = asyncio.create_task(work())
+        futures[identifier] = future
+
+        def on_done(completed):
+            futures.pop(identifier, None)
+            if job["status"] == "running":
+                job["status"] = "cancelled" if completed.cancelled() else "failed"
+                emit({"type": "run.cancelled" if completed.cancelled() else "error",
+                      "error": "Run cancelled" if completed.cancelled() else "Run stopped unexpectedly"})
+
+        future.add_done_callback(on_done)
+        return {"run_id": identifier, "status": "running",
+                "stream_url": f"/api/runs/{identifier}/stream",
+                "resumed": True, "checkpoint_stage": checkpoint.get("_checkpoint_stage")}
 
     def job_for(identifier):
         safe(identifier)
@@ -297,16 +459,33 @@ def register_dashboard_api(app, service):
         record = await run_record(run_id)
         result = record.get("result", record)
         steps = result.get("steps", [])
+
+        def pipeline_selected_execution_id() -> str | None:
+            """Resolve selected_execution_id from the persisted pipeline.json when the
+            in-memory job record no longer carries it (e.g. after an API restart)."""
+            task_id = record.get("task_id")
+            if not task_id:
+                return None
+            pipeline_path = root / safe(task_id) / "pipeline.json"
+            if pipeline_path.exists():
+                try:
+                    return read(pipeline_path).get("selected_execution_id")
+                except Exception:
+                    pass
+            return None
+
         if section == "events":
             return record.get("events", [])
         if section == "trajectory":
-            execution_id = result.get("selected_execution_id")
+            execution_id = result.get("selected_execution_id") or pipeline_selected_execution_id()
             if execution_id and "trajectory" not in record:
                 paths = list(root.glob(f"*/{safe(execution_id)}/trajectory.json"))
                 return read(paths[0]) if len(paths) == 1 else []
             return record.get("trajectory", [])
         if section in {"output", "tools", "harness", "metrics"}:
-            execution_id = result.get("selected_execution_id") or record.get("execution_id")
+            execution_id = (result.get("selected_execution_id")
+                            or record.get("execution_id")
+                            or pipeline_selected_execution_id())
             if section == "output" and not execution_id:
                 status = record.get("status")
                 if status == "running":

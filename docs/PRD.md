@@ -13,7 +13,7 @@ Recursive Agent Harness helps a developer or researcher run a task with a local 
 | Improvement | Run parallel branches or sequential rounds with `k` from 1 to 5; propose invariant and domain edits, validate candidates, probe them, compare behavior, compose changes, and probe successors. |
 | Selection | Choose from anonymous deliverables using the task and supplied sources, without exposing harness identity to the selector. |
 | Reflection and reuse | Attribute observed effects to components, retain a changed harness only with supported evidence, and retrieve relevant past lessons as context for later editors. |
-| Inspection | Show task/run history, live SSE progress, output, trajectory, tool calls, candidate evidence, contrasts, composition, harness files/diffs, and library entries. |
+| Inspection | Show task/run history, a live plain-language stage timeline with current/completed/failed states, output, trajectory, tool calls, candidate evidence, contrasts, composition, harness files/diffs, and library entries. |
 | Cancellation | Allow an active run to be cancelled from the live view; persist cancelled status and stop its event stream. |
 | Configuration | Support Ollama or an OpenAI-compatible chat endpoint through local settings. |
 | Evaluation | Report operational metrics separately from task-quality or benchmark scores. |

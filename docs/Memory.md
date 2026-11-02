@@ -22,6 +22,8 @@ This is a local implementation of contrastive, two-loop harness improvement. The
 - Added cancellation for active jobs through the live-run UI and `DELETE /api/runs/{run_id}`. Cancelled jobs and mid-execution records persist a terminal status, and SSE closes (2026-11-02).
 - Background job completion now has a final status guard so an unexpectedly stopped task does not remain marked `running` in its persisted job record.
 - After an API restart, loading a job left as `running` now persists an `interrupted` event and status instead of leaving the disk record stale.
+- Replaced the dense run graph with five high-level improvement phases or two base-run phases. The view derives current/completed/terminal status from persisted events, updates on SSE, and has a mobile list (2026-11-02).
+- Fixed the Tools tab blank-screen crash: tool actions arrive as objects and are now reduced to a string action name for the evidence heading, while the full record stays visible below (2026-11-02).
 - Created the six project context documents under `docs/` on 2026-11-02; this was documentation only.
 
 ## Known issues and limitations

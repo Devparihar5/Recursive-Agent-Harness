@@ -1,4 +1,6 @@
 """Small HTTP adapters for local Ollama and OpenAI-compatible servers."""
+import json
+
 import httpx
 from .base import ModelResponse
 
@@ -26,14 +28,40 @@ class OllamaProvider:
         self.timeout, self.max_tokens = timeout, max_tokens
 
     async def generate(self, messages: list[dict], temperature: float = 0, response_format: dict | None = None) -> ModelResponse:
-        payload = {"model": self.model, "messages": messages, "stream": False, "options": {"temperature": temperature, "num_predict": self.max_tokens}}
+        payload = {"model": self.model, "messages": messages, "stream": True, "think": False,
+                   "options": {"temperature": temperature, "num_predict": self.max_tokens}}
         if response_format is not None:
             payload["format"] = response_format.get("json_schema", {}).get("schema", "json")
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            response = await client.post(f"{self.base_url}/api/chat", json=payload)
-            response.raise_for_status()
-            data = response.json()
-        return ModelResponse(content=data["message"]["content"], token_usage={"prompt_tokens": data.get("prompt_eval_count", 0), "completion_tokens": data.get("eval_count", 0)}, model=data.get("model", self.model))
+        chunks = []
+        final = None
+        try:
+            timeout = httpx.Timeout(self.timeout, connect=min(self.timeout, 10))
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                async with client.stream("POST", f"{self.base_url}/api/chat", json=payload) as response:
+                    response.raise_for_status()
+                    async for line in response.aiter_lines():
+                        if not line.strip():
+                            continue
+                        item = json.loads(line)
+                        if item.get("error"):
+                            raise RuntimeError(f"Ollama: {item['error']}")
+                        content = item.get("message", {}).get("content", "")
+                        if content:
+                            chunks.append(content)
+                        if item.get("done") is True:
+                            final = item
+                            break
+        except httpx.ReadTimeout as exc:
+            raise TimeoutError(
+                f"Ollama model {self.model} sent no response data for {self.timeout:g} seconds. "
+                "Try a smaller model or increase the model timeout."
+            ) from exc
+        if final is None:
+            raise ValueError("Ollama response stream ended before completion")
+        return ModelResponse(content="".join(chunks),
+                             token_usage={"prompt_tokens": final.get("prompt_eval_count", 0),
+                                          "completion_tokens": final.get("eval_count", 0)},
+                             model=final.get("model", self.model))
 
 
 def create_provider(config):
