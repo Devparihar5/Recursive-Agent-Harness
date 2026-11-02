@@ -20,7 +20,7 @@ from app.core.models import Task, utc_now
 def register_dashboard_api(app, service):
     root = Path(service.workspace_root).resolve()
     root.mkdir(parents=True, exist_ok=True)
-    jobs, active = {}, set()
+    jobs, futures = {}, {}
     app.state.pipeline, app.state.jobs = service, jobs
 
     def safe(value):
@@ -44,6 +44,10 @@ def register_dashboard_api(app, service):
         temporary.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
         temporary.replace(path)
 
+    def emit_to(job, event):
+        job["events"].append({"id": len(job["events"]) + 1, **event})
+        write(root / job["task_id"] / "jobs" / f"{job['run_id']}.json", job)
+
     def task_for(identifier):
         path = inside(root / safe(identifier) / "task.json")
         if not path.is_file():
@@ -56,6 +60,29 @@ def register_dashboard_api(app, service):
             getattr(app, method)("/api" + path)(function)
             return function
         return decorate
+
+    @route("get", "/examples")
+    async def list_examples():
+        examples_root = Path(__file__).resolve().parents[2] / "examples"
+        examples = (
+            ("quick-reply", "Quick customer reply", "Draft a short response without any source files.", "customer_support", "quick_reply"),
+            ("double-charge", "Pending second charge", "Review a payment authorization and delivery concern.", "customer_support", "customer_issue"),
+            ("incident-review", "Incident review", "Summarize an outage from timeline and metric notes.", "operations", "incident_review"),
+        )
+        return [
+            {
+                "id": identifier,
+                "title": title,
+                "summary": summary,
+                "domain": domain,
+                "description": (examples_root / f"{stem}.md").read_text(encoding="utf-8"),
+                "sources": [
+                    {"name": path.name, "content": path.read_text(encoding="utf-8")}
+                    for path in sorted((examples_root / f"{stem}_sources").glob("*.md"))
+                ],
+            }
+            for identifier, title, summary, domain, stem in examples
+        ]
 
     @route("get", "/tasks")
     async def list_tasks():
@@ -171,8 +198,7 @@ def register_dashboard_api(app, service):
         job = {"run_id": identifier, "task_id": task_id, "status": "running", "events": [], "created_at": utc_now()}
         jobs[identifier] = job
         def emit(event):
-            job["events"].append({"id": len(job["events"]) + 1, **event})
-            write(root / task_id / "jobs" / f"{identifier}.json", job)
+            emit_to(job, event)
         emit({"type": "stage", "stage": "TASK RECEIVED"})
         async def work():
             try:
@@ -180,12 +206,22 @@ def register_dashboard_api(app, service):
                 job["status"] = "completed" if job["result"].get("deliverable") else "failed"
                 emit({"type": "result", "selected_execution_id": job["result"].get("selected_execution_id"),
                       "library_entry": job["result"].get("library_entry"), "status": job["status"]})
+            except asyncio.CancelledError:
+                job["status"] = "cancelled"
+                emit({"type": "run.cancelled", "error": "Run cancelled"})
+                raise
             except Exception as exc:
                 job["status"] = "failed"
                 emit({"type": "error", "error": str(exc)})
         future = asyncio.create_task(work())
-        active.add(future)
-        future.add_done_callback(active.discard)
+        futures[identifier] = future
+        def on_done(completed):
+            futures.pop(identifier, None)
+            if job["status"] == "running":
+                job["status"] = "cancelled" if completed.cancelled() else "failed"
+                emit({"type": "run.cancelled" if completed.cancelled() else "error",
+                      "error": "Run cancelled" if completed.cancelled() else "Run stopped unexpectedly"})
+        future.add_done_callback(on_done)
         return {"run_id": identifier, "status": "running", "stream_url": f"/api/runs/{identifier}/stream"}
 
     def job_for(identifier):
@@ -198,7 +234,26 @@ def register_dashboard_api(app, service):
         job = read(paths[0])
         if job["status"] == "running":
             job["status"] = "interrupted"
+            emit_to(job, {"type": "run.interrupted", "error": "Run was interrupted before completion"})
         return job
+
+    @route("delete", "/runs/{run_id}")
+    async def cancel_run(run_id: str):
+        job = job_for(run_id)
+        if job["status"] != "running":
+            return {"run_id": run_id, "status": job["status"]}
+        future = futures.get(run_id)
+        if future is None:
+            raise HTTPException(409, "Run is not active in this server")
+        future.cancel()
+        try:
+            await future
+        except asyncio.CancelledError:
+            pass
+        if job["status"] == "running":
+            job["status"] = "cancelled"
+            emit_to(job, {"type": "run.cancelled", "error": "Run cancelled"})
+        return {"run_id": run_id, "status": job["status"]}
 
     @route("get", "/runs/{run_id}/stream")
     async def stream_run(run_id: str, request: Request):
@@ -256,9 +311,10 @@ def register_dashboard_api(app, service):
                 status = record.get("status")
                 if status == "running":
                     return {"deliverable": "", "status": status, "error": None}
-                if status in {"failed", "interrupted"}:
+                if status in {"failed", "interrupted", "cancelled"}:
                     errors = [event.get("error") for event in record.get("events", [])
-                              if event.get("type") == "error" and event.get("error")]
+                              if event.get("type") in {"error", "run.cancelled", "run.interrupted"}
+                              and event.get("error")]
                     return {"deliverable": "", "status": status,
                             "error": errors[-1] if errors else None}
             paths = list(root.glob(f"*/{safe(execution_id)}/execution.json")) if execution_id else []

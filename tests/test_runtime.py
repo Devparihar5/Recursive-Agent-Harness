@@ -2,6 +2,8 @@ import asyncio
 import json
 from pathlib import Path
 
+import pytest
+
 from app.core.config import Settings
 from app.core.models import Task
 from app.executor.executor import AgentExecutor
@@ -65,3 +67,30 @@ def test_harness_rejects_escape_and_missing_skill_trigger(tmp_path):
     harness = load_harness(root)
     task = Task(description="Customer support case", domain="customer_support")
     assert "skills/customer_issue_analysis/SKILL.md" in harness.active_skills(task)
+
+
+def test_cancelled_execution_persists_terminal_record(tmp_path):
+    class WaitingProvider:
+        def __init__(self):
+            self.started = asyncio.Event()
+
+        async def generate(self, messages, temperature=0, response_format=None):
+            self.started.set()
+            await asyncio.Event().wait()
+
+    async def run():
+        provider = WaitingProvider()
+        executor = AgentExecutor(provider, tmp_path / "runs", Settings())
+        execution = asyncio.create_task(executor.execute(Task(description="Wait"),
+            load_harness(_base(tmp_path))))
+        await provider.started.wait()
+        execution.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await execution
+
+    asyncio.run(run())
+    records = list((tmp_path / "runs").glob("*/execution.json"))
+    assert len(records) == 1
+    record = json.loads(records[0].read_text(encoding="utf-8"))
+    assert record["status"] == "cancelled"
+    assert record["error"] == "Run cancelled"

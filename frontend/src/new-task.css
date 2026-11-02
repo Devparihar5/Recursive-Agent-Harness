@@ -1,0 +1,82 @@
+.examples-section {
+  margin-bottom: 34px;
+}
+
+.examples-heading {
+  margin-bottom: 16px;
+}
+
+.examples-heading h2 {
+  margin: 0 0 5px;
+  font-size: 18px;
+  font-weight: 550;
+}
+
+.examples-heading p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.example-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 15px;
+}
+
+.example-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  padding: 21px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.example-card h3 {
+  margin: 15px 0 5px;
+  font-size: 15px;
+  font-weight: 550;
+}
+
+.example-card p {
+  flex: 1;
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.example-card small {
+  margin-bottom: 18px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.example-card .button {
+  width: 100%;
+}
+
+.example-card .button + .button {
+  margin-top: 8px;
+}
+
+.settings-feedback {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.examples-section button:disabled,
+.form-grid button:disabled {
+  cursor: not-allowed;
+}
+
+@media (max-width: 1100px) {
+  .example-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 760px) {
+  .example-grid { grid-template-columns: 1fr; }
+}

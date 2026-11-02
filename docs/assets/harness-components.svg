@@ -1,0 +1,141 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 400" width="860" height="400">
+  <defs>
+    <linearGradient id="h-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0d1117"/>
+      <stop offset="100%" style="stop-color:#161b22"/>
+    </linearGradient>
+    <filter id="h-glow">
+      <feGaussianBlur stdDeviation="2" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- BG -->
+  <rect width="860" height="400" fill="url(#h-bg)" rx="12"/>
+
+  <!-- Grid -->
+  <g stroke="#21262d" stroke-width="0.4" opacity="0.4">
+    <line x1="0" y1="50" x2="860" y2="50"/><line x1="0" y1="100" x2="860" y2="100"/>
+    <line x1="0" y1="150" x2="860" y2="150"/><line x1="0" y1="200" x2="860" y2="200"/>
+    <line x1="0" y1="250" x2="860" y2="250"/><line x1="0" y1="300" x2="860" y2="300"/>
+    <line x1="0" y1="350" x2="860" y2="350"/>
+    <line x1="86" y1="0" x2="86" y2="400"/><line x1="172" y1="0" x2="172" y2="400"/>
+    <line x1="258" y1="0" x2="258" y2="400"/><line x1="344" y1="0" x2="344" y2="400"/>
+    <line x1="430" y1="0" x2="430" y2="400"/><line x1="516" y1="0" x2="516" y2="400"/>
+    <line x1="602" y1="0" x2="602" y2="400"/><line x1="688" y1="0" x2="688" y2="400"/>
+    <line x1="774" y1="0" x2="774" y2="400"/>
+  </g>
+
+  <!-- Title -->
+  <text x="430" y="30" font-family="'Segoe UI',system-ui,sans-serif" font-size="14" font-weight="700" fill="#f0f6fc" text-anchor="middle" letter-spacing="1">HARNESS COMPONENTS  ·  C1 – C8</text>
+  <rect x="330" y="36" width="200" height="1.5" rx="1" fill="#3fb950" opacity="0.4"/>
+
+  <!-- ═══ GROUP 1: Context Construction ═══ -->
+  <rect x="28" y="56" width="390" height="156" rx="9" fill="none" stroke="#58a6ff" stroke-width="1" stroke-dasharray="5 3" opacity="0.5"/>
+  <rect x="44" y="48" width="168" height="18" rx="4" fill="#161b22"/>
+  <text x="52" y="61" font-family="'Segoe UI',system-ui,sans-serif" font-size="9.5" fill="#58a6ff" font-weight="600" letter-spacing="0.5">CONTEXT CONSTRUCTION</text>
+  <text x="220" y="61" font-family="monospace" font-size="7.5" fill="#484f58">what enters context, and when</text>
+
+  <!-- C1 System Prompt -->
+  <rect x="44" y="72" width="178" height="60" rx="7" fill="#161b22" stroke="#58a6ff" stroke-width="1.3"/>
+  <text x="54" y="89" font-family="monospace" font-size="8.5" fill="#8b949e">C1</text>
+  <text x="72" y="89" font-family="'Segoe UI',system-ui,sans-serif" font-size="10" font-weight="700" fill="#58a6ff">System Prompt</text>
+  <text x="54" y="103" font-family="monospace" font-size="7.5" fill="#484f58">systemprompt.md</text>
+  <rect x="54" y="111" width="60" height="14" rx="7" fill="#21262d"/>
+  <text x="84" y="121" font-family="monospace" font-size="7" fill="#58a6ff" text-anchor="middle">every call</text>
+  <text x="54" y="123" font-family="monospace" font-size="6.5" fill="#6e7681"/>
+
+  <!-- C2 Guardrails -->
+  <rect x="234" y="72" width="178" height="60" rx="7" fill="#161b22" stroke="#58a6ff" stroke-width="1.3"/>
+  <text x="244" y="89" font-family="monospace" font-size="8.5" fill="#8b949e">C2</text>
+  <text x="262" y="89" font-family="'Segoe UI',system-ui,sans-serif" font-size="10" font-weight="700" fill="#58a6ff">Guardrails</text>
+  <text x="244" y="103" font-family="monospace" font-size="7.5" fill="#484f58">guardrails.md</text>
+  <rect x="244" y="111" width="60" height="14" rx="7" fill="#21262d"/>
+  <text x="274" y="121" font-family="monospace" font-size="7" fill="#58a6ff" text-anchor="middle">every call</text>
+
+  <!-- C3 Memory -->
+  <rect x="44" y="142" width="178" height="60" rx="7" fill="#161b22" stroke="#58a6ff" stroke-width="1.3"/>
+  <text x="54" y="159" font-family="monospace" font-size="8.5" fill="#8b949e">C3</text>
+  <text x="72" y="159" font-family="'Segoe UI',system-ui,sans-serif" font-size="10" font-weight="700" fill="#58a6ff">Memory</text>
+  <text x="54" y="173" font-family="monospace" font-size="7.5" fill="#484f58">LongTermMEMORY.md</text>
+  <rect x="54" y="181" width="60" height="14" rx="7" fill="#21262d"/>
+  <text x="84" y="191" font-family="monospace" font-size="7" fill="#58a6ff" text-anchor="middle">every call</text>
+
+  <!-- C6 Skills -->
+  <rect x="234" y="142" width="178" height="60" rx="7" fill="#161b22" stroke="#e3b341" stroke-width="1.3"/>
+  <text x="244" y="159" font-family="monospace" font-size="8.5" fill="#8b949e">C6</text>
+  <text x="262" y="159" font-family="'Segoe UI',system-ui,sans-serif" font-size="10" font-weight="700" fill="#e3b341">Skills</text>
+  <text x="244" y="173" font-family="monospace" font-size="7.5" fill="#484f58">skills/*/SKILL.md</text>
+  <rect x="244" y="181" width="70" height="14" rx="7" fill="#21262d"/>
+  <text x="279" y="191" font-family="monospace" font-size="7" fill="#e3b341" text-anchor="middle">on-demand</text>
+  <text x="317" y="192" font-family="monospace" font-size="7" fill="#484f58">via skill tool</text>
+
+  <!-- ═══ GROUP 2: Tool Interface ═══ -->
+  <rect x="434" y="56" width="200" height="156" rx="9" fill="none" stroke="#f78166" stroke-width="1" stroke-dasharray="5 3" opacity="0.5"/>
+  <rect x="450" y="48" width="120" height="18" rx="4" fill="#161b22"/>
+  <text x="458" y="61" font-family="'Segoe UI',system-ui,sans-serif" font-size="9.5" fill="#f78166" font-weight="600" letter-spacing="0.5">TOOL INTERFACE</text>
+
+  <!-- C4 Tool Guidance -->
+  <rect x="450" y="72" width="178" height="60" rx="7" fill="#161b22" stroke="#f78166" stroke-width="1.3"/>
+  <text x="460" y="89" font-family="monospace" font-size="8.5" fill="#8b949e">C4</text>
+  <text x="478" y="89" font-family="'Segoe UI',system-ui,sans-serif" font-size="10" font-weight="700" fill="#f78166">Tool Guidance</text>
+  <text x="460" y="103" font-family="monospace" font-size="7.5" fill="#484f58">tool_guidance.md</text>
+  <rect x="460" y="111" width="60" height="14" rx="7" fill="#21262d"/>
+  <text x="490" y="121" font-family="monospace" font-size="7" fill="#f78166" text-anchor="middle">every call</text>
+
+  <!-- C7 Scripts -->
+  <rect x="450" y="142" width="178" height="60" rx="7" fill="#161b22" stroke="#f78166" stroke-width="1.3"/>
+  <text x="460" y="159" font-family="monospace" font-size="8.5" fill="#8b949e">C7</text>
+  <text x="478" y="159" font-family="'Segoe UI',system-ui,sans-serif" font-size="10" font-weight="700" fill="#f78166">Scripts</text>
+  <text x="460" y="173" font-family="monospace" font-size="7.5" fill="#484f58">scripts/*.py</text>
+  <rect x="460" y="181" width="78" height="14" rx="7" fill="#21262d"/>
+  <text x="499" y="191" font-family="monospace" font-size="7" fill="#f78166" text-anchor="middle">run via bash</text>
+  <text x="544" y="192" font-family="monospace" font-size="6.5" fill="#484f58">⚠ inert</text>
+
+  <!-- ═══ GROUP 3: Orchestration ═══ -->
+  <rect x="650" y="56" width="200" height="156" rx="9" fill="none" stroke="#3fb950" stroke-width="1" stroke-dasharray="5 3" opacity="0.5"/>
+  <rect x="666" y="48" width="110" height="18" rx="4" fill="#161b22"/>
+  <text x="674" y="61" font-family="'Segoe UI',system-ui,sans-serif" font-size="9.5" fill="#3fb950" font-weight="600" letter-spacing="0.5">ORCHESTRATION</text>
+
+  <!-- C5 Subagents -->
+  <rect x="666" y="72" width="178" height="60" rx="7" fill="#161b22" stroke="#3fb950" stroke-width="1.3"/>
+  <text x="676" y="89" font-family="monospace" font-size="8.5" fill="#8b949e">C5</text>
+  <text x="694" y="89" font-family="'Segoe UI',system-ui,sans-serif" font-size="10" font-weight="700" fill="#3fb950">Subagents</text>
+  <text x="676" y="103" font-family="monospace" font-size="7.5" fill="#484f58">sub_agents/*/AGENT.md</text>
+  <rect x="676" y="111" width="66" height="14" rx="7" fill="#21262d"/>
+  <text x="709" y="121" font-family="monospace" font-size="7" fill="#3fb950" text-anchor="middle">task tool</text>
+  <text x="747" y="122" font-family="monospace" font-size="6.5" fill="#484f58">⚠ inert</text>
+
+  <!-- C8 Plugins -->
+  <rect x="666" y="142" width="178" height="60" rx="7" fill="#161b22" stroke="#3fb950" stroke-width="1.3"/>
+  <text x="676" y="159" font-family="monospace" font-size="8.5" fill="#8b949e">C8</text>
+  <text x="694" y="159" font-family="'Segoe UI',system-ui,sans-serif" font-size="10" font-weight="700" fill="#3fb950">Plugins</text>
+  <text x="676" y="173" font-family="monospace" font-size="7.5" fill="#484f58">plugins/*.py</text>
+  <rect x="676" y="181" width="90" height="14" rx="7" fill="#21262d"/>
+  <text x="721" y="191" font-family="monospace" font-size="7" fill="#3fb950" text-anchor="middle">middleware hooks</text>
+  <text x="771" y="192" font-family="monospace" font-size="6.5" fill="#484f58">⚠ inert</text>
+
+  <!-- ═══ FROZEN MODEL ═══ -->
+  <rect x="28" y="232" width="804" height="72" rx="9" fill="#161b22" stroke="#30363d" stroke-width="1.2"/>
+  <text x="430" y="256" font-family="'Segoe UI',system-ui,sans-serif" font-size="11" font-weight="700" fill="#8b949e" text-anchor="middle">FROZEN MODEL  (weights unchanged)</text>
+  <text x="430" y="274" font-family="monospace" font-size="8.5" fill="#484f58" text-anchor="middle">Any Ollama or OpenAI-compatible endpoint  ·  default: qwen3.5:4b</text>
+  <text x="430" y="289" font-family="monospace" font-size="8" fill="#3fb950" text-anchor="middle">Agent  =  Model  +  Harness</text>
+
+  <!-- Arrows: components → model -->
+  <line x1="133" y1="212" x2="133" y2="232" stroke="#58a6ff" stroke-width="1" stroke-dasharray="3 2" opacity="0.5"/>
+  <line x1="323" y1="212" x2="323" y2="232" stroke="#58a6ff" stroke-width="1" stroke-dasharray="3 2" opacity="0.5"/>
+  <line x1="539" y1="212" x2="539" y2="232" stroke="#f78166" stroke-width="1" stroke-dasharray="3 2" opacity="0.5"/>
+  <line x1="755" y1="212" x2="755" y2="232" stroke="#3fb950" stroke-width="1" stroke-dasharray="3 2" opacity="0.5"/>
+
+  <!-- ═══ VALIDATION RULES ═══ -->
+  <rect x="28" y="322" width="804" height="64" rx="9" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="430" y="342" font-family="'Segoe UI',system-ui,sans-serif" font-size="10" font-weight="600" fill="#f0f6fc" text-anchor="middle">HARNESS VALIDATION  (loader.py)</text>
+  <text x="140" y="360" font-family="monospace" font-size="7.5" fill="#8b949e" text-anchor="middle">C1–C4 required · non-empty</text>
+  <text x="340" y="360" font-family="monospace" font-size="7.5" fill="#8b949e" text-anchor="middle">Skills need Triggers: line</text>
+  <text x="530" y="360" font-family="monospace" font-size="7.5" fill="#8b949e" text-anchor="middle">Scripts: valid AST · no import</text>
+  <text x="710" y="360" font-family="monospace" font-size="7.5" fill="#8b949e" text-anchor="middle">No symlinks · no path escape</text>
+  <text x="430" y="377" font-family="monospace" font-size="7.5" fill="#484f58" text-anchor="middle">SHA-256 content hash → harness version (16 hex chars)  ·  max 128 KB/file · 1 MB total</text>
+
+  <!-- Footer -->
+  <text x="430" y="394" font-family="monospace" font-size="7" fill="#484f58" text-anchor="middle">app/harness/model.py · app/harness/loader.py · harnesses/base/</text>
+</svg>

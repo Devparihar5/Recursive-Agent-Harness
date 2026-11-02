@@ -14,6 +14,10 @@ the system prompt, guardrails, memory, tool guidance, skills, scripts, subagents
 that surround it. This project lets you improve that harness automatically and accumulate the
 lessons across tasks, without touching model weights and without needing ground-truth labels.
 
+<p align="center">
+  <img src="docs/assets/architecture.svg" alt="System Architecture" width="860"/>
+</p>
+
 **Task-level recursion** refines the harness for the current task:
 
 1. Execute the current harness as a baseline; record trajectory and deliverable.
@@ -49,6 +53,10 @@ Eight editable files matching the paper's C1–C8:
 | C7 | Scripts | `scripts/*.py` | Inert — sandbox execution not yet implemented |
 | C8 | Plugins / middleware | `plugins/*.py` | Inert — hook invocation not yet implemented |
 
+<p align="center">
+  <img src="docs/assets/harness-components.svg" alt="Harness Components C1–C8" width="860"/>
+</p>
+
 ---
 
 ## Requirements
@@ -72,6 +80,10 @@ poetry install -E api
 ---
 
 ## Quick start
+
+<p align="center">
+  <img src="docs/assets/pipeline-parallel.svg" alt="Parallel Recursion k=3" width="860"/>
+</p>
 
 ### CLI
 

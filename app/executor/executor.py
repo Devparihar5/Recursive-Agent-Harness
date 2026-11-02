@@ -1,6 +1,7 @@
 """Bounded model execution with durable evidence, including failed calls."""
 from __future__ import annotations
 
+import asyncio
 import json
 import inspect
 from pathlib import Path
@@ -113,6 +114,11 @@ class AgentExecutor:
             record.artifacts.append(str(run_dir / "output.md"))
             record.artifacts.append(str(run_dir / "deliverable.md"))
             record.artifacts.extend(str(file) for file in sorted((workspace / "output").rglob("*")) if file.is_file())
+        except asyncio.CancelledError:
+            record.status = "cancelled"
+            record.error = "Run cancelled"
+            record.trajectory.append({"event": "cancelled", "at": utc_now()})
+            raise
         except Exception as exc:
             record.status = "failed"
             record.error = f"{type(exc).__name__}: {exc}"
@@ -132,7 +138,9 @@ class AgentExecutor:
             record.artifacts.append(str(run_dir / "trajectory.json"))
             record.artifacts.extend(str(run_dir / name) for name in ("tool_calls.json", "metadata.json"))
             write_json(run_dir / "execution.json", record.model_dump(mode="json"))
-            await self._emit("execution.completed" if record.status == "completed" else "execution.failed",
+            event_type = ("execution.completed" if record.status == "completed" else
+                          "execution.cancelled" if record.status == "cancelled" else "execution.failed")
+            await self._emit(event_type,
                              execution_id=run_id, task_id=record.task_id,
                              status=record.status, error=record.error,
                              duration_ms=record.duration_ms)
