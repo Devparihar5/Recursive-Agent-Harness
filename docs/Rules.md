@@ -10,6 +10,7 @@ Read the relevant documents alongside this file in `docs/`: `PRD.md`, `ARCHITECT
 - Put browser code under `frontend/src/`; reuse `frontend/src/components/ui/` for shared controls. Keep feature behavior close to the route that uses it unless a split improves clarity.
 - Store default harness component files in `harnesses/base/`, stage prompt templates in `prompts/`, samples in `examples/`, and Python tests in `tests/` named `test_*.py`.
 - Use Python `snake_case` for functions and modules, `PascalCase` for classes and Pydantic records; use TypeScript/React `PascalCase` for components and `camelCase` for values and functions.
+- Keep backend imports at module scope. Resolve cycles by placing shared helpers in a dependency-safe module rather than importing them inside functions.
 - Preserve existing JSON record and API field names when changing persisted or networked data; changes need migration/compatibility consideration.
 
 ## Behavioral boundaries

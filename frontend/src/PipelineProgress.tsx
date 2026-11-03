@@ -52,13 +52,13 @@ export function PipelineProgress({ mode, k, events, status }: Props) {
     markerEnd: { type: MarkerType.ArrowClosed, color: stages[index].status === 'completed' ? '#8daa6f' : '#d2dac9' },
   }));
   const fraction = (progress.completed + (progress.current >= 0 ? 0.45 : 0)) / stages.length;
-  const runKind = mode === 'base' ? 'Single agent run'
+  const runKind = mode === 'base' ? 'Base only · no improvement'
     : `${mode === 'sequential' ? 'Sequential' : 'Parallel'} · ${k} ${mode === 'sequential' ? k === 1 ? 'round' : 'rounds' : k === 1 ? 'branch' : 'branches'}`;
 
   return <div className="pipeline-progress">
     <div className="pipeline-progress-summary" aria-live="polite">
       <div>
-        <span className="pipeline-progress-eyebrow">CURRENT STEP · {runKind}</span>
+        <span className="pipeline-progress-eyebrow">RUN TYPE · {runKind}</span>
         <h3>{progress.title}</h3>
         <p>{progress.activity}</p>
       </div>

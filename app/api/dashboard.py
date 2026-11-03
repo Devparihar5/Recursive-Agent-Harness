@@ -8,6 +8,7 @@ import difflib
 import inspect
 import json
 import re
+import httpx
 from pathlib import Path
 from uuid import uuid4
 
@@ -15,6 +16,12 @@ from fastapi import HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from app.core.models import Task, utc_now
+from app.core.config import Settings
+from app.harness.loader import load_harness
+from app.llm.providers import create_provider
+from app.orchestration.pipeline import Pipeline, compare_runs
+from app.benchmark.runner import BenchmarkRunner, list_benchmark_results
+from app.benchmark import verifier
 
 
 def register_dashboard_api(app, service):
@@ -191,7 +198,6 @@ def register_dashboard_api(app, service):
             overrides["timeout_seconds"] = data["timeout_seconds"]
         runner = service
         if overrides:
-            from app.orchestration.pipeline import Pipeline
             runner = Pipeline(service.config.model_copy(update=overrides),
                               library_root=service.library.root, workspace_root=root)
         identifier = uuid4().hex
@@ -336,7 +342,6 @@ def register_dashboard_api(app, service):
 
         runner = service
         if overrides:
-            from app.orchestration.pipeline import Pipeline
             runner = Pipeline(service.config.model_copy(update=overrides),
                               library_root=service.library.root, workspace_root=root)
 
@@ -519,7 +524,6 @@ def register_dashboard_api(app, service):
         values = [item for step in steps for item in step.get(fields[section], [])]
         if section != "diff":
             return values
-        from app.harness.loader import load_harness
         base = load_harness(Path(service.config.harnesses_root) / "base")
         components = []
         for candidate in values:
@@ -551,7 +555,6 @@ def register_dashboard_api(app, service):
 
     @route("get", "/compare")
     async def compare(run1: str, run2: str):
-        from app.orchestration.pipeline import compare_runs
         try:
             return compare_runs(root, run1, run2)
         except ValueError as exc:
@@ -570,13 +573,11 @@ def register_dashboard_api(app, service):
     @route("get", "/tasks/{task_id}/harness")
     async def task_harness(task_id: str):
         task_for(task_id)
-        from app.harness.loader import load_harness
         harness = load_harness(Path(service.config.harnesses_root) / "base")
         return {"version": harness.version, "files": harness.files}
 
     @route("get", "/harnesses")
     async def harnesses():
-        from app.harness.loader import load_harness
         results = []
         for path in sorted(Path(service.config.harnesses_root).glob("*")):
             if path.is_dir():
@@ -589,7 +590,6 @@ def register_dashboard_api(app, service):
 
     @route("get", "/harnesses/{harness_id}")
     async def harness_detail(harness_id: str):
-        from app.harness.loader import load_harness
         path = Path(service.config.harnesses_root) / safe(harness_id)
         try:
             harness = load_harness(path)
@@ -644,7 +644,6 @@ def register_dashboard_api(app, service):
         status = "unavailable"
         if service.config.provider == "ollama":
             try:
-                import httpx
                 async with httpx.AsyncClient(timeout=5) as client:
                     response = await client.get(service.config.base_url.rstrip("/") + "/api/tags")
                     response.raise_for_status()
@@ -658,8 +657,6 @@ def register_dashboard_api(app, service):
 
     @route("put", "/settings")
     async def update_settings(request: Request):
-        from app.core.config import Settings
-        from app.llm.providers import create_provider
         data = await request.json()
         allowed = {"provider", "model", "base_url", "api_key", "timeout_seconds", "max_steps", "max_tokens"}
         if not isinstance(data, dict) or set(data) - allowed:
@@ -702,7 +699,6 @@ def register_dashboard_api(app, service):
 
     @route("get", "/evaluation")
     async def evaluation():
-        from app.benchmark.runner import list_benchmark_results
 
         results = [read(path) for path in sorted(root.glob("*/pipeline.json"))]
         config = getattr(service, "config", None)
@@ -715,8 +711,6 @@ def register_dashboard_api(app, service):
     @route("post", "/tasks/{task_id}/verify")
     async def verify_task(task_id: str, request: Request):
         """Judge a finished deliverable without re-running or changing the pipeline."""
-        from app.benchmark.runner import BenchmarkRunner, list_benchmark_results
-        from app.benchmark.verifier import create_model_verifier
 
         task = task_for(task_id)
         pipeline_path = inside(root / safe(task_id) / "pipeline.json")
@@ -747,7 +741,7 @@ def register_dashboard_api(app, service):
                         pipeline_result["selected_execution_id"] and
                         type(existing.get("benchmark", {}).get("score")) in (int, float)):
                     return existing
-        runner = BenchmarkRunner(verifier=create_model_verifier(config),
+        runner = BenchmarkRunner(verifier=verifier.create_model_verifier(config),
                                  results_root=results_root)
         result = await runner.verify_completed(
             task, pipeline_result, verification_context={"rubric": rubric})

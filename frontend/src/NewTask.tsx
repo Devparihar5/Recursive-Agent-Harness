@@ -129,7 +129,7 @@ export function NewTaskPage() {
         <div>
           <div className="eyebrow">QUICK START</div>
           <h2 id="examples-heading">Run a sample task</h2>
-          <p>Quick run includes the sample notes in one prompt and executes once. Full improvement compares candidates and takes longer on local models.</p>
+          <p>Base-only quick runs use k=0, at most 8 agent turns, and a 300-second model timeout. Full improvement uses the settings below and compares candidates.</p>
         </div>
       </div>
       {examples.isLoading && <p className="muted">Loading examples…</p>}
@@ -143,15 +143,15 @@ export function NewTaskPage() {
           <Button
             onClick={() => create.mutate({ example, baseOnly: true })}
             disabled={create.isPending}
-            aria-label={`Quick run: ${example.title}`}
+            aria-label={`Base-only quick run: ${example.title}`}
           >
             {create.isPending && create.variables?.example?.id === example.id
               ? <LoaderCircle className="spin" size={16}/>
               : <Play size={16}/>}
-            {create.isPending && create.variables?.example?.id === example.id ? 'Starting…' : 'Quick run'}
+            {create.isPending && create.variables?.example?.id === example.id ? 'Starting…' : 'Base-only quick run'}
           </Button>
           <Button secondary onClick={() => create.mutate({ example })} disabled={create.isPending}>
-            Full improvement (slower)
+            Full improvement · {mode === 'sequential' ? `Sequential ${k} ${k === 1 ? 'round' : 'rounds'}` : `Parallel ${k} ${k === 1 ? 'branch' : 'branches'}`}
           </Button>
         </div>)}
       </div>
@@ -166,6 +166,7 @@ export function NewTaskPage() {
         <label>Upload source files <span>PDF / TEXT / MARKDOWN</span><input type="file" multiple accept=".pdf,.txt,.md,.csv,.json,.py,.ts,.tsx,.js" onChange={event => setUploads(Array.from(event.target.files || []))}/></label>
       </div></Panel>
       <Panel title="Execution settings"><div className="form-body">
+        <p className="muted">Improvement mode and rounds apply to Full improvement and Create &amp; run task. Base-only actions use k=0.</p>
         <label>Improvement mode<select value={mode} onChange={event => { setMode(event.target.value as TaskDefaults['mode']); setSaveStatus(''); }}><option value="parallel">Parallel candidates</option><option value="sequential">Sequential refinement</option></select></label>
         <label>Improvement rounds<input type="number" min={1} max={5} value={k} onChange={event => { setK(Number(event.target.value)); setSaveStatus(''); }}/></label>
         <label>Model<input value={model} onChange={event => { setModel(event.target.value); setSaveStatus(''); }}/></label>

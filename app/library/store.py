@@ -141,7 +141,6 @@ class ImprovementLibrary:
         Returns metadata with status='pending'. The entry is stored in a
         separate 'pending' directory until explicitly adopted.
         """
-        import shutil
 
         experience = json.loads(json.dumps(experience, allow_nan=False))
         source = Path(harness.path).resolve()
@@ -195,7 +194,6 @@ class ImprovementLibrary:
 
     def adopt(self, entry_id: str) -> dict | None:
         """Adopt a pending entry, moving it to the正式 library and removing from pending."""
-        import shutil
 
         pending_index = self.root / "pending_index.json"
         if not pending_index.exists():

@@ -24,11 +24,10 @@ from __future__ import annotations
 import json
 import logging
 import re
+import lancedb
+import pyarrow as pa
 from pathlib import Path
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .embeddings import EmbeddingClient
+from .embeddings import EmbeddingClient
 
 log = logging.getLogger(__name__)
 
@@ -38,9 +37,6 @@ _ZERO_VECTOR = [0.0] * _DIM
 
 class LibraryIndex:
     def __init__(self, root: Path, embedder: "EmbeddingClient | None" = None):
-        import lancedb
-        import pyarrow as pa
-
         self._pa = pa
         self.path = root / "index.lancedb"
         self.embedder = embedder
@@ -68,8 +64,6 @@ class LibraryIndex:
         if "vector" in existing_names:
             return
         log.info("LibraryIndex: migrating existing table to add vector column")
-        import pyarrow as pa
-
         rows = self.table.to_arrow().to_pylist()
         self.connection.drop_table("entries")
         self.table = self.connection.create_table("entries", schema=target_schema)
@@ -90,7 +84,6 @@ class LibraryIndex:
         if self.embedder is None:
             return _ZERO_VECTOR
         try:
-            from .embeddings import EmbeddingClient
             text = EmbeddingClient.entry_text(json.loads(metadata_json))
             vector = self.embedder.embed(text)
             return vector if len(vector) == _DIM else _ZERO_VECTOR

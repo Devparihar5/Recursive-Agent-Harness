@@ -24,7 +24,7 @@ flowchart LR
 | Path | Responsibility |
 | --- | --- |
 | `app/core/` | Pydantic task and experiment records, enums, environment configuration. |
-| `app/harness/` | Load, validate, clone, version, and diff harness component files. |
+| `app/harness/` | Load, validate, clone, version, and diff harness component files. The model owns `safe_path`; the loader re-exports it for existing callers. |
 | `app/executor/` | Run bounded model/tool turns in a per-execution workspace and persist trajectories, tool calls, snapshots, and deliverables. |
 | `app/improvement/` | Produce invariant and domain candidates, probe them, compare behavior, compose changes, select anonymous outputs, and reflect on evidence. |
 | `app/orchestration/` | Coordinate baseline, parallel or sequential recursion, selection, reflection, and library updates. |

@@ -7,12 +7,14 @@ import inspect
 from pathlib import Path
 
 from app.core.config import Settings, get_settings
-from app.core.models import ImprovementStep
+from app.core.models import ExecutionRecord, ImprovementStep
 from app.executor.executor import AgentExecutor
 from app.harness.loader import load_harness
 from app.improvement.recursion import ImprovementEngine
 from app.improvement.reflector import Reflector
 from app.improvement.selector import BlindSelector
+from app.improvement.probe import BehavioralAnalyzer
+from app.library.embeddings import EmbeddingClient
 from app.library.store import ImprovementLibrary
 from app.llm.providers import create_provider
 
@@ -63,7 +65,6 @@ class Pipeline:
 
     def _create_embedder(self):
         """Create an EmbeddingClient from config."""
-        from app.library.embeddings import EmbeddingClient
         model = getattr(self.config, "embedding_model", "nomic-embed-text:latest")
         base_url = getattr(self.config, "base_url", "http://localhost:11434")
         return EmbeddingClient(model=model, base_url=base_url)
@@ -324,7 +325,6 @@ class Pipeline:
 
 def compare_runs(root: Path, first: str, second: str) -> dict:
     """Compare two persisted executions by ID without reading unrelated paths."""
-    from app.improvement.probe import BehavioralAnalyzer
 
     def read(run_id: str) -> dict:
         if not re.fullmatch(r"[0-9a-f]{32}", run_id):
@@ -335,7 +335,6 @@ def compare_runs(root: Path, first: str, second: str) -> dict:
         return json.loads(matches[0].read_text(encoding="utf-8"))
 
     left, right = read(first), read(second)
-    from app.core.models import ExecutionRecord
     before = BehavioralAnalyzer.summarize(ExecutionRecord.model_validate(left))
     after = BehavioralAnalyzer.summarize(ExecutionRecord.model_validate(right))
     return {"run1": first, "run2": second, "before": before, "after": after,

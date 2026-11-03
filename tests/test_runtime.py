@@ -7,7 +7,7 @@ import pytest
 from app.core.config import Settings
 from app.core.models import Task
 from app.executor.executor import AgentExecutor
-from app.harness.loader import load_harness
+from app.harness.loader import load_harness, safe_path
 
 
 class ReadThenFinish:
@@ -46,7 +46,6 @@ def test_execution_records_source_inspection_and_snapshot(tmp_path):
 
 
 def test_harness_rejects_escape_and_missing_skill_trigger(tmp_path):
-    from app.harness.loader import safe_path
     try:
         safe_path(tmp_path, "../outside")
     except ValueError:

@@ -14,6 +14,11 @@ This is a local implementation of contrastive, two-loop harness improvement. The
 
 ## Completed work
 
+- Diagnosed a live example run as `base, k=0` with source notes embedded in the task description, matching the Quick run action. Clarified example button labels and which execution settings apply to full improvement (2026-11-03).
+- Clarified the run progress header: base jobs now say `Base only · no improvement`, and the eyebrow says `RUN TYPE` rather than implying the mode is the current step. Saved parallel jobs still render their branch count (2026-11-03).
+- Fixed the harness loader's `safe_path` re-export after an import error exposed the missing binding; `tests/test_runtime.py` now imports that public name at collection time (2026-11-03).
+- Added a concise root `AGENTS.md` contributor guide after verifying none existed; it records current structure, commands, conventions, and evidence expectations (2026-11-03).
+- Moved backend function-local imports to module scope. Relocated `safe_path` to the harness model and re-exported it from the loader to break their import cycle without changing callers. The dashboard calls the verifier through its module so test and integration patching still works (2026-11-03).
 - Connected a separate model judge to saved completed runs through `POST /api/tasks/{task_id}/verify`. Evaluation offers an optional rubric and a score action, then reads the persisted assessment. The rubric and score stay out of task and pipeline records. A live Ollama call scored a saved run successfully; model scores remain subjective assessments (2026-11-03).
 - Evaluation now lists completed ordinary runs as unverified, so a completed task appears even before external scoring. Real verifier scores remain distinct; ordinary completion does not imply task correctness (2026-11-03).
 - Removed the Improvement library dashboard page and overview count while retaining the library backend. Added `/health` and `/api/health`. Evaluation now reads persisted external benchmark results from `BENCHMARK_RESULTS_ROOT` and displays actual scores separately from operational metrics (2026-11-03).

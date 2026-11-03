@@ -8,7 +8,7 @@ from pathlib import Path
 
 from app.core.models import Task
 from app.library.store import ImprovementLibrary
-from app.orchestration.pipeline import Pipeline
+from app.orchestration.pipeline import Pipeline, compare_runs
 
 
 def _task_from_file(path: Path, sources: list[str], domain: str | None) -> Task:
@@ -63,7 +63,6 @@ def main(argv: list[str] | None = None) -> int:
         value = store.list_entries() if args.library_command == "list" else store.inspect(args.entry_id)
         print(json.dumps(value, indent=2, ensure_ascii=False))
         return 0
-    from app.orchestration.pipeline import compare_runs
     print(json.dumps(compare_runs(Path("runs"), args.run1, args.run2), indent=2, ensure_ascii=False))
     return 0
 

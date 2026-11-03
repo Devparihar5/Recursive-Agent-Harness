@@ -2,6 +2,7 @@
 from uuid import uuid4
 from pathlib import Path
 from io import BytesIO
+from pypdf import PdfReader
 
 from .utils import ask_json
 
@@ -49,7 +50,6 @@ class BlindSelector:
             if total > 10 * 1024 * 1024:
                 raise ValueError("Source materials exceed size limit")
             if target.suffix.lower() == ".pdf":
-                from pypdf import PdfReader
                 reader = PdfReader(BytesIO(target.read_bytes()))
                 if len(reader.pages) > 50:
                     raise ValueError("PDF exceeds 50-page limit")

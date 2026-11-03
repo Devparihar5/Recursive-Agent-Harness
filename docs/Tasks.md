@@ -19,15 +19,11 @@ This is the concise working backlog. The current implementation is described in 
 - [x] Remove the Improvement library page from the dashboard, add a process health endpoint, and show saved benchmark results on Evaluation (2026-11-03).
 - [x] Show completed ordinary runs on Evaluation with an unverified status until an external score exists (2026-11-03).
 - [x] Connect a separate model judge to completed runs: optional private rubric, one-click scoring, persisted assessment, and no score feedback into improvement (2026-11-03).
-
-## Pending
-
-| Priority | Task | Done when |
-| --- | --- | --- |
-| High | Add user review and adoption flow outside the removed library page | A user can inspect a baseline/composition and explicitly adopt an evidence-backed library entry. |
-| Medium | Dispatch harness subagents and invoke skills on demand | Both use explicit tools and respect their own execution boundaries. |
-| Medium | Add multi-task stream runner and resource budgets | A task list can run sequentially, and each probe has explicit turn/time/cost limits. |
-| Medium | Expand library inspection and management | Users can search/filter entries, inspect diffs against base, and remove or annotate entries. |
+- [x] Hoist backend function-local imports to module scope and preserve the harness path helper's public import path (2026-11-03).
+- [x] Add a root contributor guide in `AGENTS.md` after checking that the file was absent (2026-11-03).
+- [x] Clarify the live progress label so base-only runs are distinct from parallel or sequential improvement runs (2026-11-03).
+- [x] Clarify that example Quick run ignores improvement mode/rounds and display the selected settings on Full improvement (2026-11-03).
+c
 
 ## Known bugs and verification gaps
 

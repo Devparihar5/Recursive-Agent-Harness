@@ -3,22 +3,11 @@ from pathlib import Path
 import hashlib
 import ast
 import re
-from .model import Harness
+from .model import Harness, safe_path
 
 MAX_FILE_BYTES = 128 * 1024
 MAX_HARNESS_BYTES = 1024 * 1024
 REQUIRED_FILES = {"systemprompt.md", "guardrails.md", "LongTermMEMORY.md", "tool_guidance.md"}
-
-
-def safe_path(root: Path, relative: str) -> Path:
-    root = Path(root).resolve()
-    rel = Path(relative)
-    if rel.is_absolute() or ".." in rel.parts or ":" in relative or "\\" in relative:
-        raise ValueError(f"Unsafe harness path: {relative}")
-    result = (root / rel).resolve()
-    if not result.is_relative_to(root):
-        raise ValueError(f"Harness path escapes root: {relative}")
-    return result
 
 
 def load_harness(path: str | Path) -> Harness:

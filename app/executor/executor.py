@@ -9,6 +9,7 @@ from io import BytesIO
 from time import perf_counter
 from typing import Any
 from uuid import uuid4
+from pypdf import PdfReader
 
 from app.core.config import Settings
 from app.core.models import ExecutionRecord, Task, utc_now
@@ -174,7 +175,6 @@ class AgentExecutor:
             destination = safe_path(workspace, relative.as_posix())
             destination.parent.mkdir(parents=True, exist_ok=True)
             if target.suffix.lower() == ".pdf":
-                from pypdf import PdfReader
                 reader = PdfReader(BytesIO(target.read_bytes()))
                 if len(reader.pages) > 50:
                     raise ValueError("PDF exceeds 50-page limit")

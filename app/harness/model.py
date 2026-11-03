@@ -1,6 +1,18 @@
 from pathlib import Path
 import re
 from pydantic import BaseModel, ConfigDict, Field
+from app.core.models import SubAgentDefinition
+
+
+def safe_path(root: Path, relative: str) -> Path:
+    root = Path(root).resolve()
+    rel = Path(relative)
+    if rel.is_absolute() or ".." in rel.parts or ":" in relative or "\\" in relative:
+        raise ValueError(f"Unsafe harness path: {relative}")
+    result = (root / rel).resolve()
+    if not result.is_relative_to(root):
+        raise ValueError(f"Harness path escapes root: {relative}")
+    return result
 
 
 class Harness(BaseModel):
@@ -10,7 +22,6 @@ class Harness(BaseModel):
     files: dict[str, str] = Field(default_factory=dict)
 
     def read(self, name: str = "systemprompt.md") -> str:
-        from .loader import safe_path
         if name in self.files:
             return self.files[name]
         return safe_path(self.path, name).read_text(encoding="utf-8")
@@ -38,8 +49,6 @@ class Harness(BaseModel):
 
     def subagents(self):
         """Expose definitions as data for a separate-context adapter."""
-        from app.core.models import SubAgentDefinition
-
         definitions = {}
         for name, content in self.files.items():
             path = Path(name)
