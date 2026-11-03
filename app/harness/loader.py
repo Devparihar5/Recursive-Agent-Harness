@@ -1,9 +1,8 @@
 """Markdown harnesses are data, never executable Python."""
 from pathlib import Path
-import hashlib
 import ast
 import re
-from .model import Harness, safe_path
+from .model import Harness, safe_path, harness_sha256
 
 MAX_FILE_BYTES = 128 * 1024
 MAX_HARNESS_BYTES = 1024 * 1024
@@ -38,8 +37,12 @@ def load_harness(path: str | Path) -> Harness:
                 except SyntaxError as exc:
                     raise ValueError(f"Invalid Python syntax in {name}: {exc.msg}") from exc
                 if name.startswith("plugins/"):
-                    hooks = {node.name for node in ast.walk(tree)
-                             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))}
+                    if any(isinstance(node, ast.AsyncFunctionDef) and node.name in {
+                            "before_model_call", "after_model_call", "before_tool_call",
+                            "after_tool_call", "before_task_complete"} for node in tree.body):
+                        raise ValueError(f"Plugin hooks must be synchronous functions: {name}")
+                    hooks = {node.name for node in tree.body
+                             if isinstance(node, ast.FunctionDef)}
                     if not hooks.intersection({"before_model_call", "after_model_call",
                                                "before_tool_call", "after_tool_call",
                                                "before_task_complete"}):
@@ -61,7 +64,4 @@ def load_harness(path: str | Path) -> Harness:
             for reference in re.findall(r"(?<![\w/])(?:scripts/[^\s`'\"<>]+\.py|sub_agents/[^\s`'\"<>]+/AGENT\.md)", content):
                 if reference not in files:
                     raise ValueError(f"Referenced harness artifact is missing: {reference}")
-    digest = hashlib.sha256()
-    for name, text in sorted(files.items()):
-        digest.update(name.encode() + b"\x00" + text.encode() + b"\x00")
-    return Harness(path=root, version=digest.hexdigest()[:16], files=files)
+    return Harness(path=root, version=harness_sha256(files)[:16], files=files)

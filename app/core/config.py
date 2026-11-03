@@ -1,7 +1,7 @@
 """Environment configuration; no network or filesystem effects at import."""
 from pathlib import Path
 import os
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class Settings(BaseModel):
@@ -13,6 +13,10 @@ class Settings(BaseModel):
     timeout_seconds: float = 300
     max_steps: int = 50
     max_tokens: int = 4096
+    max_execution_seconds: float = 3600
+    max_execution_tokens: int = 100000
+    allow_unsafe_harness_code: bool = False
+    trusted_harness_sha256: list[str] = Field(default_factory=list)
     embedding_model: str = "nomic-embed-text:latest"
     verifier_model: str = ""
     default_recursion_mode: str = "parallel"
@@ -52,6 +56,10 @@ def get_settings() -> Settings:
         timeout_seconds=float(setting("LLM_TIMEOUT_SECONDS", "300")),
         max_steps=int(setting("LLM_MAX_STEPS", "50")),
         max_tokens=int(setting("LLM_MAX_TOKENS", "4096")),
+        max_execution_seconds=float(setting("MAX_EXECUTION_SECONDS", "3600")),
+        max_execution_tokens=int(setting("MAX_EXECUTION_TOKENS", "100000")),
+        allow_unsafe_harness_code=setting("ALLOW_UNSAFE_HARNESS_CODE", "false").lower() in {"1", "true", "yes", "on"},
+        trusted_harness_sha256=[value.strip().lower() for value in setting("TRUSTED_HARNESS_SHA256", "").split(",") if value.strip()],
         embedding_model=setting("EMBEDDING_MODEL", "nomic-embed-text:latest"),
         verifier_model=setting("VERIFIER_MODEL", ""),
         default_recursion_mode=setting("DEFAULT_RECURSION_MODE", "parallel"),

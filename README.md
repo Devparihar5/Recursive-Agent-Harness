@@ -5,7 +5,7 @@
 </p>
 
 
-A local Python + React implementation of the two-loop architecture from **[Harness²: Recursive Agent Harnessing for an Open World](https://arxiv.org/abs/2610.14224)** (Xu et al., 2026, arXiv:2610.14224).
+A local Python and React project for running tasks, refining agent harnesses, and reusing evidence-backed lessons across tasks.
 
 ## What it does
 
@@ -40,7 +40,7 @@ lessons across tasks, without touching model weights and without needing ground-
 
 ## Harness components
 
-Eight editable files matching the paper's C1–C8:
+The harness exposes eight editable component types:
 
 | # | Component | File | When active |
 |---|---|---|---|
@@ -48,10 +48,16 @@ Eight editable files matching the paper's C1–C8:
 | C2 | Guardrails | `guardrails.md` | Every model call |
 | C3 | Memory | `LongTermMEMORY.md` | Every model call |
 | C4 | Tool guidance | `tool_guidance.md` | Every model call |
-| C5 | Subagents | `sub_agents/*/AGENT.md` | Inert — dispatch not yet implemented |
-| C6 | Skills | `skills/*/SKILL.md` | On keyword match at run start (on-demand `skill tool` not yet implemented) |
-| C7 | Scripts | `scripts/*.py` | Subprocess helper exists; harness scripts are not mounted for agent execution |
-| C8 | Plugins / middleware | `plugins/*.py` | Hook action is incomplete; automatic middleware is not implemented |
+| C5 | Subagents | `sub_agents/*/AGENT.md` | Delegated into a separate bounded context with declared read-only tools |
+| C6 | Skills | `skills/*/SKILL.md` | Loaded on demand by name |
+| C7 | Scripts | `scripts/*.py` | Invoked from the saved harness snapshot when trusted-code execution is enabled |
+| C8 | Plugins / middleware | `plugins/*.py` | Synchronous hooks run automatically when trusted-code execution is enabled |
+
+Harness Python is disabled by default. To run code you have reviewed and trust, obtain its full
+hash with `python -m app harness-hash --path harnesses/base`, then set both
+`ALLOW_UNSAFE_HARNESS_CODE=true` and `TRUSTED_HARNESS_SHA256=<hash>` in the environment.
+Changes to any harness file change the hash and require a new review. These subprocesses do not
+provide operating-system filesystem isolation.
 
 <p align="center">
   <img src="docs/assets/harness-components.svg" alt="Harness Components C1–C8" width="860"/>
@@ -99,6 +105,9 @@ python -m app run-task --task examples/customer_issue.md --mode parallel --k 3
 
 # Three sequential improvement steps
 python -m app run-task --task examples/customer_issue_2.md --mode sequential --k 3
+
+# Process multiple tasks in order; adoption is optional and explicit
+python -m app run-stream --task examples/customer_issue.md --task examples/incident_review.md --adopt-supported
 ```
 
 Attach source files explicitly or let them be discovered from an adjacent `<task>_sources/` folder:
@@ -116,7 +125,14 @@ only into its run's `output/` directory.
 
 ```sh
 python -m app library list
+python -m app library list --domain customer_support --query evidence
 python -m app library inspect entry_001
+python -m app library diff entry_001
+python -m app library pending
+python -m app library adopt <pending_id> --note "Reviewed the evidence"
+python -m app library annotate <entry_id> "Review note"
+python -m app library archive <entry_id> --reason "Not currently applicable"
+python -m app library restore <entry_id>
 ```
 
 ### Compare two runs
@@ -151,6 +167,9 @@ Open `http://localhost:5173`. Vite proxies `/api` to the FastAPI backend.
 | Harness explorer | Browse harness versions and their files |
 | Evaluation | Completed runs, on-demand model assessments, and separate operational metrics |
 | Settings | Provider, model, base URL, API key |
+
+API keys entered in the dashboard stay in the running backend process only. Existing `.env`
+contents are preserved; use the environment to provide a key again after a restart.
 
 ---
 

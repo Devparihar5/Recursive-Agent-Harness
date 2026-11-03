@@ -32,6 +32,27 @@ class ScriptedProvider:
         return ModelResponse(content=json.dumps(value), token_usage={"completion_tokens": 1})
 
 
+def test_one_round_returns_successor_without_selector(tmp_path):
+    base = tmp_path / "harnesses" / "base"
+    base.mkdir(parents=True)
+    for name in ("systemprompt.md", "guardrails.md", "LongTermMEMORY.md", "tool_guidance.md"):
+        (base / name).write_text("# Instruction\nInspect evidence.\n", encoding="utf-8")
+    (tmp_path / "source.txt").write_text("Order record", encoding="utf-8")
+
+    class NoSelectorProvider(ScriptedProvider):
+        async def generate(self, messages, temperature=0, response_format=None):
+            assert "Select the best execution" not in messages[0]["content"]
+            return await super().generate(messages, temperature, response_format)
+
+    pipeline = Pipeline(Settings(harnesses_root=base.parent, source_root=tmp_path, max_steps=3),
+                        provider=NoSelectorProvider(), library_root=tmp_path / "library",
+                        workspace_root=tmp_path / "runs")
+    result = asyncio.run(pipeline.run(Task(task_id="one", description="Review",
+        source_files=["source.txt"]), mode="parallel", k=1))
+    assert result["selected_execution_id"] == result["steps"][0]["successor_execution"]["execution_id"]
+    assert len(list((tmp_path / "runs" / "one").glob("*/execution.json"))) == 4
+
+
 def test_two_tasks_reset_to_common_base(tmp_path):
     base = tmp_path / "harnesses" / "base"
     base.mkdir(parents=True)
@@ -69,6 +90,7 @@ def test_parallel_width_and_sequential_depth(tmp_path):
         source_files=["source.txt"]), mode="sequential", k=3))
     assert len(parallel["steps"]) == 3
     assert parallel["metrics"]["executions"] == 12
+    assert len(list((tmp_path / "runs" / "parallel").glob("*/execution.json"))) == 12
     assert all(len(step["reference_executions"]) == 3 for step in parallel["steps"])
     assert all(len(step["candidate_harnesses"]) == 6 for step in parallel["steps"])
     assert len(sequential["steps"]) == 3
@@ -114,7 +136,7 @@ def test_experience_retrieval_does_not_replace_base_harness(tmp_path):
     pipeline = Pipeline(settings, provider=LearningProvider(),
                         library_root=tmp_path / "library", workspace_root=tmp_path / "runs")
     first = asyncio.run(pipeline.run(Task(task_id="first", description="Review source",
-        domain="customer_support", source_files=["source.txt"]), mode="parallel", k=1))
+        domain="customer_support", source_files=["source.txt"]), mode="parallel", k=2))
     assert first["library_entry"]
     assert first["deliverable"] == "candidate"
     pending = pipeline.library.list_pending()

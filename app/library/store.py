@@ -7,6 +7,8 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
+from app.harness.loader import load_harness
+from app.harness.versioning import diff_harnesses
 from .embeddings import EmbeddingClient
 from .index import LibraryIndex
 from .retrieval import hybrid_rank
@@ -22,7 +24,7 @@ class ImprovementLibrary:
         self.index = LibraryIndex(self.root, embedder=embedder)
 
     def add(self, harness, experience: dict, domain: str, task_shape: str,
-            version: str | None = None) -> dict:
+            version: str | None = None, adopted_from: str | None = None) -> dict:
         # Validate metadata before creating any persistent artifacts.
         experience = json.loads(json.dumps(experience, allow_nan=False))
         source = Path(getattr(harness, "path", harness)).resolve()
@@ -59,6 +61,8 @@ class ImprovementLibrary:
             "harness_path": str(target),
             "entry_path": str(entry_root),
         }
+        if adopted_from:
+            metadata["adopted_from"] = adopted_from
         try:
             shutil.copytree(source, target)
             (entry_root / "EXPERIENCE.md").write_text(
@@ -74,17 +78,124 @@ class ImprovementLibrary:
             raise
         return metadata
 
-    def list_entries(self) -> list[dict]:
-        return self.index.list_entries()
+    def _entry_root(self, entry: dict) -> Path:
+        path = Path(entry["entry_path"])
+        resolved = path.resolve()
+        if (not resolved.is_relative_to(self.root) or resolved == self.root
+                or len(resolved.relative_to(self.root).parts) != 2
+                or not re.fullmatch(r"entry_[0-9]{3,}", resolved.name)
+                or Path(entry["harness_path"]).resolve() != resolved / "harness"):
+            raise ValueError("Unsafe library entry path")
+        for item in (path, path.parent, path / "harness"):
+            if item.is_symlink() or (hasattr(item, "is_junction") and item.is_junction()):
+                raise ValueError("Unsafe link in library entry path")
+        return resolved
+
+    def _enrich_entry(self, entry: dict) -> dict:
+        root = self._entry_root(entry)
+        marker = root / "ARCHIVED.json"
+        annotations_dir = root / "annotations"
+        if (marker.is_symlink() or annotations_dir.is_symlink()
+                or (hasattr(annotations_dir, "is_junction") and annotations_dir.is_junction())):
+            raise ValueError("Unsafe link in library metadata")
+        annotations = []
+        if annotations_dir.is_dir():
+            for path in sorted(annotations_dir.glob("*.json")):
+                if path.is_symlink():
+                    raise ValueError("Unsafe annotation link")
+                annotations.append(json.loads(path.read_text(encoding="utf-8")))
+        return {**entry, "archived": marker.is_file(), "annotations": annotations}
+
+    def list_entries(self, include_archived: bool = False) -> list[dict]:
+        entries = [self._enrich_entry(entry) for entry in self.index.list_entries()]
+        return entries if include_archived else [entry for entry in entries if not entry["archived"]]
+
+    def search_entries(self, query: str = "", domain: str = "", component: str = "",
+                       include_archived: bool = False) -> list[dict]:
+        query, domain, component = query.casefold(), domain.casefold(), component.casefold()
+        return [entry for entry in self.list_entries(include_archived=include_archived)
+                if (not query or query in json.dumps(entry, ensure_ascii=False).casefold())
+                and (not domain or str(entry.get("domain", "")).casefold() == domain)
+                and (not component or any(component in str(item).casefold()
+                                          for item in entry.get("components", [])))]
+
+    def diff_from_base(self, entry_id: str, base_path: Path) -> str | None:
+        entry = self.inspect(entry_id)
+        if entry is None:
+            return None
+        return diff_harnesses(load_harness(base_path), load_harness(entry["harness_path"]))
 
     def get(self, entry_id: str) -> dict | None:
         if re.fullmatch(r"[0-9a-f]{32}", entry_id):
-            return self.index.get(entry_id)
+            entry = self.index.get(entry_id)
+            if entry is None:
+                return None
+            enriched = self._enrich_entry(entry)
+            return None if enriched["archived"] else enriched
         if re.fullmatch(r"entry_[0-9]{3,}", entry_id):
             matches = [entry for entry in self.list_entries()
                        if Path(entry["entry_path"]).name == entry_id]
             return matches[0] if len(matches) == 1 else None
         return None
+
+    def annotate(self, entry_id: str, note: str) -> dict | None:
+        if not isinstance(note, str) or not note.strip() or len(note) > 8000:
+            raise ValueError("Annotation must be nonempty text of at most 8000 characters")
+        entry = self.get(entry_id)
+        if entry is None:
+            return None
+        directory = self._entry_root(entry) / "annotations"
+        if directory.is_symlink() or (hasattr(directory, "is_junction") and directory.is_junction()):
+            raise ValueError("Unsafe annotation directory")
+        directory.mkdir(exist_ok=True)
+        annotation = {"note": note.strip(), "created_at": datetime.now(timezone.utc).isoformat()}
+        path = directory / f"{uuid.uuid4().hex}.json"
+        temporary = path.with_suffix(".tmp")
+        with temporary.open("x", encoding="utf-8") as stream:
+            json.dump(annotation, stream, ensure_ascii=False)
+        temporary.replace(path)
+        try:
+            self._write_domain_index(directory.parent.parent, entry["domain"])
+        except Exception:
+            path.unlink(missing_ok=True)
+            raise
+        return annotation
+
+    def archive(self, entry_id: str, reason: str = "") -> dict | None:
+        if not isinstance(reason, str) or len(reason) > 8000:
+            raise ValueError("Archive reason must be text of at most 8000 characters")
+        entry = self.get(entry_id)
+        if entry is None:
+            return None
+        marker = self._entry_root(entry) / "ARCHIVED.json"
+        data = {"reason": reason.strip(), "archived_at": datetime.now(timezone.utc).isoformat()}
+        with marker.open("x", encoding="utf-8") as stream:
+            json.dump(data, stream, ensure_ascii=False)
+        try:
+            self._write_domain_index(marker.parent.parent, entry["domain"])
+        except Exception:
+            marker.unlink(missing_ok=True)
+            raise
+        return {"id": entry["id"], "archived": True}
+
+    def restore(self, entry_id: str) -> dict | None:
+        if not re.fullmatch(r"[0-9a-f]{32}", entry_id):
+            raise ValueError("Invalid library entry identifier")
+        entry = self.index.get(entry_id)
+        if entry is None:
+            return None
+        marker = self._entry_root(entry) / "ARCHIVED.json"
+        if marker.is_symlink() or not marker.is_file():
+            return None
+        old_marker = marker.read_bytes()
+        marker.unlink()
+        try:
+            self._write_domain_index(marker.parent.parent, entry["domain"])
+        except Exception:
+            with marker.open("xb") as stream:
+                stream.write(old_marker)
+            raise
+        return {"id": entry_id, "archived": False}
 
     def retrieve(self, task, limit: int = 3) -> list[dict]:
         """Retrieve entries using hybrid ranking.
@@ -100,7 +211,9 @@ class ImprovementLibrary:
                 query_text = EmbeddingClient.task_text(task)
                 query_vector = self.embedder.embed(query_text)
                 if query_vector:
-                    vector_results = self.index.search(query_vector, limit=limit * 2)
+                    eligible = {entry["id"] for entry in all_entries}
+                    vector_results = [entry for entry in self.index.search(query_vector, limit=limit * 2)
+                                      if entry.get("id") in eligible]
                 else:
                     log.debug("Library.retrieve: query embedding returned zeros, using keyword fallback")
             except Exception as exc:
@@ -192,9 +305,13 @@ class ImprovementLibrary:
             raise
         return metadata
 
-    def adopt(self, entry_id: str) -> dict | None:
+    def adopt(self, entry_id: str, note: str = "") -> dict | None:
         """Adopt a pending entry, moving it to the正式 library and removing from pending."""
 
+        if not re.fullmatch(r"[0-9a-f]{32}", entry_id):
+            raise ValueError("Invalid pending entry identifier")
+        if not isinstance(note, str) or len(note) > 8000:
+            raise ValueError("Adoption note must be text of at most 8000 characters")
         pending_index = self.root / "pending_index.json"
         if not pending_index.exists():
             return None
@@ -204,18 +321,29 @@ class ImprovementLibrary:
         if not entry:
             return None
 
-        # Remove from pending
-        pending = [e for e in pending if e["id"] != entry_id]
-        pending_index.write_text(json.dumps(pending, indent=2), encoding="utf-8")
-
-        # Add to正式 library
+        pending_root = self.root / "pending"
+        pending_entry = pending_root / entry_id
+        if any(path.is_symlink() or (hasattr(path, "is_junction") and path.is_junction())
+               for path in (pending_root, pending_entry, pending_entry / "harness")):
+            raise ValueError("Unsafe link in pending harness path")
         source = Path(entry["harness_path"]).resolve()
-        metadata = self.add(source, entry["experience"], entry["domain"],
-                            entry["task_shape"], version=entry["version"])
-        metadata["adopted_from"] = entry_id
+        entry_root = Path(entry["entry_path"]).resolve()
+        expected = pending_entry.resolve()
+        if (not expected.is_relative_to(self.root) or expected.parent != pending_root.resolve()
+                or entry_root != expected or source != expected / "harness"):
+            raise ValueError("Unsafe pending harness path")
+        experience = dict(entry["experience"])
+        if note.strip():
+            experience["adoption_note"] = note.strip()
+        metadata = self.add(source, experience, entry["domain"], entry["task_shape"],
+                            version=entry["version"], adopted_from=entry_id)
+
+        pending = [e for e in pending if e["id"] != entry_id]
+        temporary = pending_index.with_suffix(".tmp")
+        temporary.write_text(json.dumps(pending, indent=2), encoding="utf-8")
+        temporary.replace(pending_index)
 
         # Clean up pending entry
-        entry_root = Path(entry["entry_path"])
         if entry_root.exists():
             shutil.rmtree(entry_root)
 

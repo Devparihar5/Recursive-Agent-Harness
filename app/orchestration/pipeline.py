@@ -144,26 +144,6 @@ class Pipeline:
         engine = ImprovementEngine(self.provider, executor, task_root / "candidates",
                                    event_callback=event_callback)
 
-        # --- BASE EXECUTION (skip if checkpoint has it) ---
-        if checkpoint_stage in ("base_done", "steps_done", "selection_done", "reflection_done"):
-            # Reload base execution record from disk via the checkpoint's execution id.
-            await _emit(event_callback, "stage",
-                        stage="BASE EXECUTION (resumed from checkpoint)")
-        else:
-            # Run base fresh and checkpoint immediately so a later failure can skip it.
-            base_exec_result = await self.run_base(task, event_callback=event_callback)
-            # Save partial checkpoint so resume can skip base next time.
-            _write_checkpoint(task_root, {
-                "task_id": task_id, "mode": mode, "k": k,
-                "base_harness_version": base.version,
-                "selected_execution_id": base_exec_result.get("selected_execution_id"),
-                "deliverable": base_exec_result.get("deliverable", ""),
-                "steps": [], "retrieved_experiences": [],
-                "reflection": None, "library_entry": None,
-                "_checkpoint_stage": "base_done",
-            })
-            checkpoint_stage = "base_done"
-
         # --- IMPROVEMENT STEPS ---
         if checkpoint_stage in ("steps_done", "selection_done", "reflection_done"):
             # Reload completed steps from the checkpoint.
@@ -224,14 +204,20 @@ class Pipeline:
                         execution_id=selected_execution_id, resumed=True)
         else:
             await _emit(event_callback, "selection.started", task_id=task_id)
-            selected_execution_id = (
-                await BlindSelector(self.provider,
-                    source_root=getattr(self.config, "source_root", Path.cwd())
-                ).select(task, terminal_probes)
-                if len(terminal_probes) > 1
-                else (terminal_probes[0].execution.execution_id if terminal_probes
-                      else baseline_probe.execution.execution_id)
-            )
+            if k == 1:
+                successor = steps[0].successor_execution
+                if successor is None or not successor.deliverable.strip():
+                    raise RuntimeError("The successor execution produced no deliverable")
+                selected_execution_id = successor.execution_id
+            else:
+                selected_execution_id = (
+                    await BlindSelector(self.provider,
+                        source_root=getattr(self.config, "source_root", Path.cwd())
+                    ).select(task, terminal_probes)
+                    if len(terminal_probes) > 1
+                    else (terminal_probes[0].execution.execution_id if terminal_probes
+                          else baseline_probe.execution.execution_id)
+                )
             await _emit(event_callback, "selection.completed", task_id=task_id,
                         execution_id=selected_execution_id)
 

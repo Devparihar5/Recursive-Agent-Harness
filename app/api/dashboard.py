@@ -603,18 +603,25 @@ def register_dashboard_api(app, service):
         return sorted(detail["files"])
 
     @route("get", "/library")
-    async def library():
-        return service.library.list_entries()
+    async def library(q: str = "", domain: str = "", component: str = "", include_archived: bool = False):
+        return service.library.search_entries(q, domain, component, include_archived)
 
     @route("get", "/library/pending")
     async def pending_entries():
         return service.library.list_pending()
 
     @route("post", "/library/{entry_id}/adopt")
-    async def adopt_entry(entry_id: str):
+    async def adopt_entry(entry_id: str, request: Request):
         if not re.fullmatch(r"[0-9a-f]{32}", entry_id):
             raise HTTPException(400, "Invalid entry identifier")
-        result = service.library.adopt(entry_id)
+        try:
+            body = await request.body()
+            data = json.loads(body) if body else {}
+            if not isinstance(data, dict):
+                raise ValueError("Expected a JSON object")
+            result = service.library.adopt(entry_id, note=data.get("note", ""))
+        except (ValueError, TypeError) as exc:
+            raise HTTPException(400, str(exc)) from exc
         if result is None:
             raise HTTPException(404, "Pending entry not found or already adopted")
         return result
@@ -631,6 +638,41 @@ def register_dashboard_api(app, service):
                 reused_by.append({"task_id": run.get("task_id"),
                                   "selected_execution_id": run.get("selected_execution_id")})
         return {**result, "reused_by": reused_by, "reuse_count": len(reused_by)}
+
+    @route("get", "/library/{entry_id}/diff")
+    async def library_diff(entry_id: str):
+        diff = service.library.diff_from_base(entry_id, Path(service.config.harnesses_root) / "base")
+        if diff is None:
+            raise HTTPException(404, "Entry not found")
+        return {"entry_id": entry_id, "diff": diff}
+
+    @route("post", "/library/{entry_id}/annotations")
+    async def annotate_library_entry(entry_id: str, request: Request):
+        try:
+            data = await request.json()
+            result = service.library.annotate(entry_id, data.get("note", ""))
+        except (ValueError, TypeError, AttributeError) as exc:
+            raise HTTPException(400, str(exc)) from exc
+        if result is None:
+            raise HTTPException(404, "Entry not found")
+        return result
+
+    @route("delete", "/library/{entry_id}")
+    async def archive_library_entry(entry_id: str):
+        result = service.library.archive(entry_id)
+        if result is None:
+            raise HTTPException(404, "Entry not found")
+        return result
+
+    @route("post", "/library/{entry_id}/restore")
+    async def restore_library_entry(entry_id: str):
+        try:
+            result = service.library.restore(entry_id)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        if result is None:
+            raise HTTPException(404, "Archived entry not found")
+        return result
 
     @route("get", "/settings")
     async def settings():
@@ -669,22 +711,35 @@ def register_dashboard_api(app, service):
         if any("\n" in str(value) or "\r" in str(value) for value in data.values()):
             raise HTTPException(400, "Settings cannot contain line breaks")
         env_path = Path.cwd() / ".env"
-        existing = {}
-        if env_path.is_file():
-            for line in env_path.read_text(encoding="utf-8").splitlines():
-                if "=" in line and not line.lstrip().startswith("#"):
-                    key, value = line.split("=", 1)
-                    existing[key.strip()] = value
         env_keys = {"provider": "LLM_PROVIDER", "model": "LLM_MODEL",
-                    "base_url": "LLM_BASE_URL", "api_key": "LLM_API_KEY",
+                    "base_url": "LLM_BASE_URL",
                     "timeout_seconds": "LLM_TIMEOUT_SECONDS", "max_steps": "LLM_MAX_STEPS",
                     "max_tokens": "LLM_MAX_TOKENS"}
-        for field, value in data.items():
-            existing[env_keys[field]] = str(value)
-        temporary = env_path.with_suffix(".env.tmp")
-        temporary.write_text("\n".join(f"{key}={value}" for key, value in existing.items()) + "\n",
-                             encoding="utf-8")
-        temporary.replace(env_path)
+        updates = {env_keys[field]: str(value) for field, value in data.items() if field in env_keys}
+        if updates:
+            if env_path.is_symlink() or (hasattr(env_path, "is_junction") and env_path.is_junction()):
+                raise HTTPException(400, "Settings file must not be a link")
+            lines = env_path.read_bytes().decode("utf-8").splitlines(keepends=True) if env_path.is_file() else []
+            seen = set()
+            for index, line in enumerate(lines):
+                if "=" not in line or line.lstrip().startswith("#"):
+                    continue
+                key = line.split("=", 1)[0].strip()
+                if key in updates:
+                    ending = "\r\n" if line.endswith("\r\n") else "\n" if line.endswith("\n") else ""
+                    lines[index] = f"{key}={updates[key]}{ending}"
+                    seen.add(key)
+            missing = [key for key in updates if key not in seen]
+            if missing and lines and not lines[-1].endswith(("\n", "\r")):
+                lines[-1] += "\n"
+            lines.extend(f"{key}={updates[key]}\n" for key in missing)
+            temporary = env_path.with_name(f".env.{uuid4().hex}.tmp")
+            try:
+                with temporary.open("xb") as stream:
+                    stream.write("".join(lines).encode("utf-8"))
+                temporary.replace(env_path)
+            finally:
+                temporary.unlink(missing_ok=True)
         service.config, service.provider = config, provider
         return await settings()
 

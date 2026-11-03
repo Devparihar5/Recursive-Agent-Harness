@@ -136,13 +136,9 @@
   <rect x="128" y="136" width="56" height="18" rx="9" fill="#21262d" stroke="#30363d" stroke-width="1"/>
   <text x="156" y="149" font-family="'Segoe UI', system-ui, sans-serif" font-size="9" fill="#58a6ff" text-anchor="middle">React + Vite</text>
 
-  <!-- arXiv badge -->
-  <rect x="192" y="136" width="72" height="18" rx="9" fill="#21262d" stroke="#30363d" stroke-width="1"/>
-  <text x="228" y="149" font-family="'Segoe UI', system-ui, sans-serif" font-size="9" fill="#3fb950" text-anchor="middle">arXiv:2610.14224</text>
-
   <!-- MIT / local badge -->
-  <rect x="272" y="136" width="54" height="18" rx="9" fill="#21262d" stroke="#30363d" stroke-width="1"/>
-  <text x="299" y="149" font-family="'Segoe UI', system-ui, sans-serif" font-size="9" fill="#8b949e" text-anchor="middle">Local · Ollama</text>
+  <rect x="192" y="136" width="72" height="18" rx="9" fill="#21262d" stroke="#30363d" stroke-width="1"/>
+  <text x="228" y="149" font-family="'Segoe UI', system-ui, sans-serif" font-size="9" fill="#8b949e" text-anchor="middle">Local · Ollama</text>
 
   <!-- Bottom rule -->
   <rect x="36" y="174" width="420" height="1" rx="0.5" fill="url(#accent)" opacity="0.25"/>

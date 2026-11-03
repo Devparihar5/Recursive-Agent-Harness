@@ -15,7 +15,7 @@ Recursive Agent Harness helps a developer or researcher run a task with a local 
 | Reflection and reuse | Attribute observed effects to components, retain a changed harness only with supported evidence, and retrieve relevant past lessons as context for later editors. |
 | Inspection | Show task/run history, a live plain-language stage timeline with current/completed/failed states, output, trajectory, tool calls, candidate evidence, contrasts, composition, and harness files/diffs. Library entries remain available through the API and CLI. |
 | Cancellation | Allow an active run to be cancelled from the live view; persist cancelled status and stop its event stream. |
-| Configuration | Support Ollama or an OpenAI-compatible chat endpoint through local settings. |
+| Configuration | Support Ollama or an OpenAI-compatible chat endpoint through local settings. Newly submitted API keys last for the current server session; existing environment configuration is preserved. |
 | Evaluation | Report operational metrics separately from model assessments. A separate model judge can score a completed run on demand against the task and an optional private rubric; the dashboard displays saved scores. These are subjective assessments, not hidden-test correctness. |
 
 ## Key user journeys
@@ -35,4 +35,4 @@ Recursive Agent Harness helps a developer or researcher run a task with a local 
 
 ## Planned, not yet implemented
 
-Explicit user review gates before composition, on-demand skill invocation, full user adoption flows with written notes, and a dataset-specific hidden-test verifier are future work. The benchmark runner can use a separate model judge or a custom verifier. Script and plugin subprocess helpers exist, but harness scripts are not mounted for execution and the plugin action is not wired correctly. Embedding-based library retrieval has a keyword fallback. See `Tasks.md` and `PAPER_ALIGNMENT.md`; do not present incomplete runtime components as current features.
+Explicit user review gates before composition and a dataset-specific hidden-test verifier are future work. Skills are invoked on demand; subagents use separate bounded contexts with declared read-only tools. Pending lessons can be reviewed and adopted with a note through the CLI or API. Harness scripts and synchronous plugin hooks require an explicit trusted-code opt-in; OS-level filesystem isolation remains pending. See `Tasks.md` and `IMPLEMENTATION_STATUS.md` for remaining gaps.

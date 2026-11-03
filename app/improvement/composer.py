@@ -9,7 +9,7 @@ class Composer:
         self.provider = provider
         self.editor = HarnessEditor(provider, workspace, "composer")
 
-    async def compose(self, task, harness, candidates, probes):
+    async def compose(self, task, harness, candidates, probes, *, history=None, experiences=None):
         usable = {probe.candidate_id: probe for probe in probes if probe.execution is not None}
         supported = [candidate for candidate in candidates if candidate.valid and candidate.id in usable]
         if not supported:
@@ -26,7 +26,8 @@ class Composer:
             "probe evidence strings. Accept only when evidence "
             "supports complementary changes and conflicts can be resolved. Selection "
             "does not prove improvement; the composed harness will require its own probe.",
-            {"task": task, "candidates": supported, "probes": probes})
+            {"task": task, "candidates": supported, "probes": probes,
+             "history": history or [], "experiences": experiences or []})
         ids = decision.get("candidate_ids", [])
         known = {candidate.id for candidate in supported}
         observed = {item for probe in probes for item in probe.evidence}
@@ -54,7 +55,8 @@ class Composer:
                 evidence=evidence, harness_path=None)
         chosen = [candidate for candidate in supported if candidate.id in ids]
         composed = await self.editor.edit(task, harness,
-            {"composition_decision": decision, "candidate_patches": chosen, "probes": probes}, [])
+            {"composition_decision": decision, "candidate_patches": chosen, "probes": probes,
+             "history": history or []}, experiences or [])
         permitted = {item.component for item in component_decisions if item.accepted}
         if any(patch.get("path") not in permitted for patch in composed.changes):
             composed.valid = False

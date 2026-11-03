@@ -30,7 +30,12 @@ class HarnessEditor:
                     "Return {patches:[{path:relative_file_path,content:complete_file_text}],reasoning:string}. "
                     "Required files: systemprompt.md, guardrails.md, LongTermMEMORY.md, tool_guidance.md. "
                     "Optional artifacts: skills/*/SKILL.md, sub_agents/*/AGENT.md, "
-                    "scripts/*.py and plugins/*.py. Python files are inert source artifacts. "
+                    "scripts/*.py and plugins/*.py. Scripts run from the harness snapshot. "
+                    "Skills are called by name. Subagents declare a Tools: line containing "
+                    "only list_files and/or read_file and run in a separate bounded context. "
+                    "Plugins define synchronous before_model_call, after_model_call, "
+                    "before_tool_call, after_tool_call, or before_task_complete functions "
+                    "taking one context dict; before hooks may return {block:true,reason:string}. "
                     "Preserve every required file and existing unrelated behavior. "
                     + ("Improve general task-independent reasoning and verification." if self.kind == "invariant"
                        else "Improve domain-specific procedures grounded in the task and observed failures."),

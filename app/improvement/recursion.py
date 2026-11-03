@@ -56,7 +56,7 @@ class ImprovementEngine:
         pool = [*references, *probes]
         await self._emit("composition.started", count=k)
         compositions = await asyncio.gather(*(Composer(self.provider, root).compose(
-            task, harness, candidates, pool) for _ in range(k)))
+            task, harness, candidates, pool, history=history, experiences=experiences) for _ in range(k)))
         await self._emit("composition.completed", count=k,
                          accepted=sum(decision.accepted for _, decision in compositions))
         successors = [candidate if candidate is not None and candidate.valid else baselines[index]

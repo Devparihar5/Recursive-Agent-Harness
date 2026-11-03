@@ -1,1 +1,1 @@
-Use list_files to discover workspace material and read_file to inspect relevant sources. Write optional artifacts under output/. Finish with final and provide the completed deliverable.
+Use list_files to discover workspace material and read_file to inspect relevant sources. Invoke a named skill when its procedure is useful. Delegate a bounded read-only investigation to an available subagent when appropriate. Write optional artifacts under output/. Finish with final and provide the completed deliverable.

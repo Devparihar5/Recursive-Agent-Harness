@@ -1,5 +1,7 @@
 from types import SimpleNamespace
 from pathlib import Path
+import json
+import pytest
 
 from app.core.models import Task
 from app.library.embeddings import EmbeddingClient
@@ -103,8 +105,69 @@ def test_pending_library_entry_lifecycle(tmp_path: Path) -> None:
     )
     assert pending["status"] == "pending"
     assert len(library.list_pending()) == 1
-    adopted = library.adopt(pending["id"])
+    adopted = library.adopt(pending["id"], note="Reviewed evidence")
     assert adopted is not None
     assert adopted["adopted_from"] == pending["id"]
     assert library.list_pending() == []
     assert library.get(adopted["id"]) is not None
+    assert library.get(adopted["id"])["adopted_from"] == pending["id"]
+    assert library.get(adopted["id"])["experience"]["adoption_note"] == "Reviewed evidence"
+
+
+def test_failed_adoption_keeps_pending_entry(tmp_path: Path, monkeypatch) -> None:
+    library = ImprovementLibrary(tmp_path / "library")
+    harness_dir = tmp_path / "snapshot"
+    harness_dir.mkdir()
+    (harness_dir / "systemprompt.md").write_text("Instructions", encoding="utf-8")
+    pending = library.add_pending(SimpleNamespace(path=harness_dir, version="v1"),
+                                  {"lesson": "Inspect evidence"}, "general", "general")
+    def fail(*args, **kwargs):
+        raise RuntimeError("index unavailable")
+    monkeypatch.setattr(library, "add", fail)
+    with pytest.raises(RuntimeError, match="index unavailable"):
+        library.adopt(pending["id"])
+    assert library.list_pending()[0]["id"] == pending["id"]
+    assert Path(pending["harness_path"]).is_dir()
+
+
+def test_library_search_and_diff_against_base(tmp_path: Path, monkeypatch) -> None:
+    from app.harness.loader import load_harness
+
+    base = tmp_path / "base"
+    changed = tmp_path / "changed"
+    for root in (base, changed):
+        root.mkdir()
+        for name in ("systemprompt.md", "guardrails.md", "LongTermMEMORY.md", "tool_guidance.md"):
+            (root / name).write_text("Base instruction\n", encoding="utf-8")
+    (changed / "guardrails.md").write_text("Inspect sources\n", encoding="utf-8")
+    library = ImprovementLibrary(tmp_path / "library")
+    entry = library.add(load_harness(changed), {"lesson": "Inspect sources",
+                        "components": ["guardrails.md"]}, "support", "ticket")
+    assert [item["id"] for item in library.search_entries("inspect", "support", "guardrails")] == [entry["id"]]
+    assert library.search_entries(domain="operations") == []
+    diff = library.diff_from_base(entry["id"], base)
+    assert "-Base instruction" in diff and "+Inspect sources" in diff
+    library.annotate(entry["id"], "First review")
+    library.annotate(entry["id"], "Second review")
+    assert {item["note"] for item in library.get(entry["id"])["annotations"]} == {"First review", "Second review"}
+    assert library.archive(entry["id"], "Not currently useful")["archived"] is True
+    assert library.get(entry["id"]) is None
+    assert Path(entry["harness_path"]).is_dir()
+    library.embedder = SimpleNamespace(embed=lambda text: [1.0])
+    monkeypatch.setattr(library.index, "search", lambda *args, **kwargs: [{**entry, "_vector_score": 1.0}])
+    assert library.retrieve(Task(description="Inspect sources", domain="support")) == []
+    domain_index = Path(entry["entry_path"]).parent / "INDEX.json"
+    assert json.loads(domain_index.read_text(encoding="utf-8")) == []
+    assert library.search_entries(include_archived=True)[0]["archived"] is True
+    assert library.restore(entry["id"])["archived"] is False
+    assert library.get(entry["id"]) is not None
+    assert len(json.loads(domain_index.read_text(encoding="utf-8"))[0]["annotations"]) == 2
+    def fail_index(*args, **kwargs):
+        raise OSError("index write failed")
+    monkeypatch.setattr(library, "_write_domain_index", fail_index)
+    with pytest.raises(OSError, match="index write failed"):
+        library.archive(entry["id"])
+    assert library.get(entry["id"]) is not None
+    with pytest.raises(OSError, match="index write failed"):
+        library.annotate(entry["id"], "Not committed")
+    assert len(library.get(entry["id"])["annotations"]) == 2

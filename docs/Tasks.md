@@ -1,6 +1,6 @@
 # Tasks
 
-This is the concise working backlog. The current implementation is described in `PRD.md`; deeper paper-fidelity notes are in the locally ignored `GAPS.md`. Priorities below reflect that gap analysis and should be reviewed before work starts.
+This is the concise working backlog. The current implementation is described in `PRD.md` and `IMPLEMENTATION_STATUS.md`. Review priorities before work starts.
 
 ## Completed
 
@@ -23,22 +23,24 @@ This is the concise working backlog. The current implementation is described in 
 - [x] Add a root contributor guide in `AGENTS.md` after checking that the file was absent (2026-11-03).
 - [x] Clarify the live progress label so base-only runs are distinct from parallel or sequential improvement runs (2026-11-03).
 - [x] Clarify that example Quick run ignores improvement mode/rounds and display the selected settings on Full improvement (2026-11-03).
+- [x] Align parallel baseline counts and select the executed successor directly at `k=1` (2026-11-03).
+- [x] Add CLI review/adoption with notes, preserve pending entries when adoption fails, and pass retrieved lessons and prior history to composition (2026-11-03).
+- [x] Add a sequential task-stream CLI with explicit optional adoption between tasks (2026-11-03).
+- [x] Add library search/filter and diff-against-base operations through the API and CLI (2026-11-03).
+- [x] Add append-only library annotations and recoverable archive/restore operations through the API and CLI (2026-11-03).
+- [x] Add on-demand skills and separate bounded subagent contexts with declared read-only tools (2026-11-03).
+- [x] Add coverage for normal SSE termination, composition evidence validation, editor retries, run comparison, nonsecret settings, and text/PDF uploads (2026-11-03).
+- [x] Keep newly submitted API keys in the current server session only, preserving existing `.env` contents (2026-11-03).
 
 ## Pending
 
 | Priority | Task | Done when |
 | --- | --- | --- |
-| High | Repair harness C7/C8 activation | Harness scripts are callable from runs; plugin hooks receive valid arguments and execute automatically at documented boundaries, with integration tests. |
-| High | Align one-step selection and reference counts | Parallel mode uses the paper's `k` references, and `k=1` returns the executed successor without blind selection. |
-| High | Make cross-task learning operational | Evidence-backed entries become retrievable through a complete adoption path, and later editors/composers can use them. |
-| High | Reproduce a paper benchmark | Run a supported task stream with benchmark-specific grading and comparable baselines without exposing scores to improvement. |
-| Medium | Dispatch harness subagents and invoke skills on demand | Both use explicit tools and respect their own execution boundaries. |
-| Medium | Add multi-task stream runner and resource budgets | A task list can run sequentially, and each probe has explicit turn/time/cost limits. |
-| Medium | Expand library inspection and management | Users can search/filter entries, inspect diffs against base, and remove or annotate entries. |
+| High | Integrate an external benchmark | Add a local dataset and grader, then evaluate task streams against comparable baselines without exposing scores to improvement. |
+| Medium | Add enforceable per-probe monetary cost limits | Turn, model/tool wait-time, and reported-token limits exist; a cost cap needs trustworthy provider pricing and usage. |
 
 ## Known bugs and verification gaps
 
 - [ ] The current Python AST gate is not a security boundary for untrusted scripts or plugins; subprocess execution needs OS-level isolation before accepting arbitrary candidate code.
 - [ ] Model assessments are subjective; add dataset-specific hidden tests or an independent ground-truth verifier before treating scores as benchmark correctness.
-- [ ] Add tests for SSE terminal behavior after normal completion, composer evidence validation, editor retry fallback, run comparison, settings round-trip, and source upload.
-- [ ] Revisit API-key storage: the settings endpoint currently writes a supplied key to local `.env` in plaintext.
+- [ ] Existing API keys already present in `.env` remain plaintext until the user removes or moves them; new settings submissions do not write keys there.

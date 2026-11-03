@@ -14,7 +14,13 @@ This is a local implementation of contrastive, two-loop harness improvement. The
 
 ## Completed work
 
-- Audited the supplied Harness² paper against current code; findings and code evidence are in `PAPER_ALIGNMENT.md`. The base prompt length is consistent with the paper's sparse stock harness, but C5–C8 activation, `k=1` selection, cross-task adoption, and benchmark reproduction are materially incomplete (2026-11-03).
+- New API keys submitted through settings are kept only in the running server process. Existing `.env` keys and comments are preserved; users can continue supplying a key through the environment.
+- Skills are now loaded through the `skill` action. The `delegate` action starts a separate subagent conversation with at most eight turns, at most three delegations per execution, and only explicitly declared `list_files`/`read_file` tools. Parent conversation and instructions are not copied into the subagent context.
+- Added library text/domain/component filters, base-harness diffs, append-only annotations, and recoverable archive/restore through the API and CLI. Archived entries stay on disk and are excluded from retrieval.
+- Added `run-stream` for sequential task processing with shared library state; automatic adoption requires the explicit `--adopt-supported` flag. Executors now limit model/tool wait time and reported tokens; a monetary cost cap remains pending because provider pricing and usage are not guaranteed.
+- Parallel improvement uses exactly `k` reference executions; a single round returns its successor without blind selection. Pending lessons can be reviewed with `python -m app library pending` and adopted with `python -m app library adopt <id> --note "..."`; adopted lessons and sequential history are supplied to composition (2026-11-03).
+- Harness Python scripts and plugins require both `ALLOW_UNSAFE_HARNESS_CODE=true` and an explicitly approved full harness SHA-256. The user chose to keep untrusted code disabled; changed harnesses require a new review. Subprocess and AST checks do not provide OS-level filesystem isolation.
+- Connected C7 scripts from the saved harness snapshot and C8 synchronous plugin hooks at model, tool, and completion boundaries. Hooks run in subprocesses and may veto actions; integration tests cover failures and concurrent runs. OS-level isolation remains pending.
 - Diagnosed a live example run as `base, k=0` with source notes embedded in the task description, matching the Quick run action. Clarified example button labels and which execution settings apply to full improvement (2026-11-03).
 - Clarified the run progress header: base jobs now say `Base only · no improvement`, and the eyebrow says `RUN TYPE` rather than implying the mode is the current step. Saved parallel jobs still render their branch count (2026-11-03).
 - Fixed the harness loader's `safe_path` re-export after an import error exposed the missing binding; `tests/test_runtime.py` now imports that public name at collection time (2026-11-03).
@@ -39,11 +45,11 @@ This is a local implementation of contrastive, two-loop harness improvement. The
 
 ## Known issues and limitations
 
-- Harness subagents remain data-only; skills are activated by keyword at startup rather than through an on-demand tool. Script and plugin subprocess helpers exist, but harness script mounting and plugin dispatch are incomplete; AST checks do not provide OS-level isolation.
+- Subagents are limited to declared read-only tools and bounded contexts. Script and plugin subprocess execution requires trusted-code opt-in; AST checks do not provide OS-level isolation.
 - Library retrieval uses embedding similarity with a keyword fallback; the embedding service must be reachable for vector search (falls back gracefully).
-- There is no user review gate before composition or full manual library adoption flow yet (pending entries + adopt API exist; end-to-end UX pending).
+- There is no user review gate before composition; pending lessons can be reviewed and adopted through the CLI or API, while dashboard adoption remains unavailable.
 - Evaluation shows operational metrics and separate persisted model assessments. The optional rubric is sent only to the verifier, not the improvement pipeline. There is no hidden-test or dataset-specific ground-truth grader yet.
 - A full improvement run makes multiple model calls across baseline, proposal, probe, composition, selection, and reflection stages. The local `qwen3.5:4b` model running on CPU can take several minutes even for the baseline.
-- `PUT /settings` writes an API key to local `.env` in plaintext when one is supplied. Treat this as a known local security limitation.
+- Existing API keys already stored in `.env` remain plaintext; new keys submitted through settings are session-only and are not written to disk.
 
-`Tasks.md` tracks actionable follow-up. `GAPS.md` contains a more detailed comparison with the paper, but is ignored by Git and should not be the sole record of important gaps.
+`Tasks.md` tracks actionable follow-up. `IMPLEMENTATION_STATUS.md` summarizes current behavior and limitations.

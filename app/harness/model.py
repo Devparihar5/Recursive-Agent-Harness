@@ -1,7 +1,15 @@
 from pathlib import Path
+import hashlib
 import re
 from pydantic import BaseModel, ConfigDict, Field
 from app.core.models import SubAgentDefinition
+
+
+def harness_sha256(files: dict[str, str]) -> str:
+    digest = hashlib.sha256()
+    for name, text in sorted(files.items()):
+        digest.update(name.encode() + b"\x00" + text.encode() + b"\x00")
+    return digest.hexdigest()
 
 
 def safe_path(root: Path, relative: str) -> Path:
@@ -57,6 +65,11 @@ class Harness(BaseModel):
                                      if re.match(r"(?i)^\s*triggers?:", line)), "")
                 triggers = [word.strip() for word in trigger_line.split(":", 1)[-1].split(",")
                             if word.strip()]
+                tools_line = next((line for line in content.splitlines()
+                                   if re.match(r"(?i)^\s*tools:\s*", line)), "")
+                allowed_tools = [word.strip() for word in tools_line.split(":", 1)[-1].split(",")
+                                 if word.strip()]
                 definitions[path.parent.name] = SubAgentDefinition(
-                    name=path.parent.name, instructions=content, triggers=triggers)
+                    name=path.parent.name, instructions=content, triggers=triggers,
+                    allowed_tools=allowed_tools)
         return definitions

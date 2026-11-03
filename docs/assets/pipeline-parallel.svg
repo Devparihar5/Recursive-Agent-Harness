@@ -194,5 +194,4 @@
   <!-- Count annotation -->
   <text x="480" y="440" font-family="monospace" font-size="8" fill="#484f58" text-anchor="middle">Total executions:  k base  +  2k candidate probes  +  k successor probes  =  6k  →  k=3 gives 18 executions</text>
   <text x="480" y="458" font-family="monospace" font-size="8" fill="#484f58" text-anchor="middle">All composers run independently and concurrently on the same evidence pool</text>
-  <text x="480" y="472" font-family="monospace" font-size="7" fill="#3fb950" text-anchor="middle">arXiv:2610.14224  ·  §2.2.2 Parallel Recursion</text>
 </svg>

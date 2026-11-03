@@ -27,7 +27,7 @@ flowchart LR
 | `app/harness/` | Load, validate, clone, version, and diff harness component files. The model owns `safe_path`; the loader re-exports it for existing callers. |
 | `app/executor/` | Run bounded model/tool turns in a per-execution workspace and persist trajectories, tool calls, snapshots, and deliverables. |
 | `app/improvement/` | Produce invariant and domain candidates, probe them, compare behavior, compose changes, select anonymous outputs, and reflect on evidence. |
-| `app/orchestration/` | Coordinate baseline, parallel or sequential recursion, selection, reflection, and library updates. |
+| `app/orchestration/` | Coordinate baseline, parallel or sequential recursion, selection, reflection, library updates, and optional sequential task streams. |
 | `app/library/` | Store adopted harness snapshots and `EXPERIENCE.md`; index metadata with LanceDB vectors and rank retrieval by embedding similarity, with a keyword fallback. |
 | `app/benchmark/` | External verifier interface, separate model judge, and result writer; private rubric and scores stay outside pipeline records. |
 | `app/llm/` | Provider interface and HTTP adapters for Ollama and OpenAI-compatible chat endpoints. |
@@ -38,7 +38,7 @@ flowchart LR
 ## Execution and data flow
 
 1. CLI (`app/__main__.py`) or the dashboard creates a task with an objective, domain, and optional source files. For an example, the dashboard fetches its bundled definition from `GET /api/examples`. A quick run puts the notes in the objective and starts a base execution; a full improvement run uploads them as source files. `Pipeline` always loads `harnesses/base` at the start of a task.
-2. `AgentExecutor` snapshots the harness into a run directory, copies allowed sources into a workspace, and exchanges JSON actions with the model. List, read, write under `output/`, and final actions work. Subprocess helpers for `run_script` and `plugin_hook` exist, but harness scripts are not mounted in the workspace and the plugin action has a call-signature bug. Generated agent files are restricted to the workspace's `output/` directory.
+2. `AgentExecutor` snapshots the harness into a run directory and copies allowed sources into a workspace. Snapshot scripts and plugin hooks require both `ALLOW_UNSAFE_HARNESS_CODE=true` and a matching full SHA-256 in `TRUSTED_HARNESS_SHA256`. Changed harnesses do not inherit trust. Subprocess checks are not OS-level filesystem isolation.
 3. In improvement mode, the engine probes baseline and edited harnesses, records behavioral contrasts, composes candidate changes, and probes successor harnesses. Parallel mode explores `k` branches; sequential mode chains `k` rounds (`1 <= k <= 5`).
 4. `BlindSelector` sees anonymous deliverables. `Reflector` can produce an evidence-backed lesson. The library stores a selected changed harness as a **pending** entry (only when the required lesson and helped attribution are present) that the user must explicitly adopt; later tasks still start from the common base and retrieved lessons inform editors rather than replacing it.
 5. Run records live under `runs/<task_id>/`; library entries live under `improvement_library/<domain>/`. Both directories are local runtime data and are ignored by Git.
@@ -49,5 +49,6 @@ flowchart LR
 - Backend: Python 3.11+, Pydantic, HTTPX, PyPDF, LanceDB; optional FastAPI and Uvicorn for the API.
 - Frontend: React 19, TypeScript, Vite, React Router, TanStack Query, React Flow, Monaco, Tailwind CSS, and Lucide icons.
 - Settings come from environment variables or `.env`; process environment takes precedence. The default provider is local Ollama using `qwen3.5:4b`.
+- `MAX_EXECUTION_SECONDS` bounds model/tool waits per execution, and `MAX_EXECUTION_TOKENS` caps reported usage after each response. Providers that omit usage cannot be token-metered; neither setting is a monetary cost cap.
 - Source paths must stay under the configured source root. The executor validates paths and size limits; generated files are restricted to the execution workspace's `output/` directory.
-- Harness subagents remain data-only; skills are selected by keyword at run start. Script and plugin helpers are incomplete as harness components, and their subprocess is not a strong OS-level sandbox for untrusted Python. Retrieval is hybrid (embedding similarity with keyword fallback). See `PAPER_ALIGNMENT.md` for the paper comparison.
+- Skills are loaded on demand by name. Subagents run in separate bounded model contexts with explicitly declared read-only tools. Scripts and synchronous plugin hooks require trusted-code opt-in and execute without OS-level filesystem isolation. Retrieval is hybrid (embedding similarity with keyword fallback). See `IMPLEMENTATION_STATUS.md` for current limitations.

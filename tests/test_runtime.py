@@ -93,3 +93,28 @@ def test_cancelled_execution_persists_terminal_record(tmp_path):
     record = json.loads(records[0].read_text(encoding="utf-8"))
     assert record["status"] == "cancelled"
     assert record["error"] == "Run cancelled"
+
+
+def test_execution_stops_when_wall_time_budget_expires(tmp_path):
+    class SlowProvider:
+        async def generate(self, messages, temperature=0, response_format=None):
+            await asyncio.sleep(1)
+
+    record = asyncio.run(AgentExecutor(SlowProvider(), tmp_path / "runs",
+        Settings(max_execution_seconds=0.05)).execute(Task(description="Wait"), load_harness(_base(tmp_path))))
+    assert record.status == "failed"
+    assert record.error == "Execution wall-time budget exceeded"
+
+
+def test_execution_stops_when_reported_token_budget_is_exceeded(tmp_path):
+    from app.llm.base import ModelResponse
+
+    class ExpensiveProvider:
+        async def generate(self, messages, temperature=0, response_format=None):
+            return ModelResponse(content='{"action":"final","content":"done"}',
+                                 token_usage={"prompt_tokens": 5, "completion_tokens": 6})
+
+    record = asyncio.run(AgentExecutor(ExpensiveProvider(), tmp_path / "runs",
+        Settings(max_execution_tokens=10)).execute(Task(description="Finish"), load_harness(_base(tmp_path))))
+    assert record.status == "failed"
+    assert "token budget exceeded" in record.error

@@ -209,6 +209,4 @@
   <line x1="186" y1="360" x2="121" y2="384" stroke="#484f58" stroke-width="1" stroke-dasharray="3 2" marker-end="url(#arr)"/>
   <text x="500" y="356" font-family="monospace" font-size="7.5" fill="#6e7681" text-anchor="middle">complete improvement record D_t</text>
 
-  <!-- ═══ Footer ═══ -->
-  <text x="450" y="508" font-family="monospace" font-size="8" fill="#484f58" text-anchor="middle">Xu et al., 2026  ·  arXiv:2610.14224  ·  github.com/google-research/harness2</text>
 </svg>

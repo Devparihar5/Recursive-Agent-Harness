@@ -1,11 +1,6 @@
-"""Sandbox subprocess execution for C7 scripts and C8 plugins.
+"""Run harness code in subprocesses with path checks, AST checks and timeouts.
 
-This module provides safe subprocess execution with:
-- Timeout enforcement
-- Memory/CPU limits (via subprocess limits on POSIX, or timeouts on Windows)
-- Path escape guards
-- Environment variable isolation
-- AST validation of Python code before execution
+These checks do not provide OS-level isolation from the host filesystem.
 """
 from __future__ import annotations
 
@@ -13,9 +8,7 @@ import asyncio
 import ast
 import json
 import os
-import subprocess
 import sys
-import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -76,9 +69,11 @@ def validate_script_path(path: Path, workspace: Path) -> bool:
 class ScriptExecutor:
     """Execute Python scripts in a sandboxed subprocess."""
 
-    def __init__(self, settings: Settings, workspace: Path):
+    def __init__(self, settings: Settings, workspace: Path,
+                 allowed_root: Path | None = None):
         self.settings = settings
         self.workspace = workspace.resolve()
+        self.allowed_root = (allowed_root or workspace).resolve()
 
     async def execute_script(self, script_path: Path, args: list[str] | None = None,
                              timeout: float | None = None) -> dict[str, Any]:
@@ -88,7 +83,7 @@ class ScriptExecutor:
             {"success": bool, "output": str, "error": str | None,
              "returncode": int, "stdout": str, "stderr": str}
         """
-        if not validate_script_path(script_path, self.workspace):
+        if not validate_script_path(script_path, self.allowed_root):
             return {"success": False, "output": "", "error": "Path escape detected",
                     "returncode": -1, "stdout": "", "stderr": ""}
 
@@ -100,7 +95,7 @@ class ScriptExecutor:
         # Build a safe subprocess command
         python = sys.executable
         args = args or []
-        cmd = [python, str(script_path), *args]
+        cmd = [python, "-I", str(script_path), *args]
 
         env = {
             "PATH": os.environ.get("PATH", ""),
@@ -136,6 +131,14 @@ class ScriptExecutor:
                     "stdout": stdout.decode("utf-8", errors="replace"),
                     "stderr": stderr.decode("utf-8", errors="replace"),
                 }
+            except asyncio.CancelledError:
+                if proc.returncode is None:
+                    try:
+                        proc.kill()
+                    except ProcessLookupError:
+                        pass
+                await proc.wait()
+                raise
             except asyncio.TimeoutError:
                 proc.kill()
                 await proc.wait()
@@ -164,9 +167,11 @@ class PluginRunner:
     Plugins implement the MiddlewareProtocol and receive context via stdin JSON.
     They write results to stdout JSON.
     """
-    def __init__(self, settings: Settings, workspace: Path):
+    def __init__(self, settings: Settings, workspace: Path,
+                 allowed_root: Path | None = None):
         self.settings = settings
         self.workspace = workspace.resolve()
+        self.allowed_root = (allowed_root or workspace).resolve()
 
     async def run_hook(self, plugin_path: Path, hook: str,
                        context: dict[str, Any]) -> dict[str, Any]:
@@ -180,17 +185,23 @@ class PluginRunner:
         if not plugin_path.exists():
             return {"success": False, "output": None, "error": f"Plugin not found: {plugin_path}"}
 
-        if not validate_script_path(plugin_path, self.workspace):
+        if not validate_script_path(plugin_path, self.allowed_root):
             return {"success": False, "output": None, "error": "Path escape detected"}
 
-        errors = validate_python_ast(plugin_path.read_text(encoding="utf-8"))
+        code = plugin_path.read_text(encoding="utf-8")
+        errors = validate_python_ast(code)
         if errors:
             return {"success": False, "output": None, "error": "; ".join(errors)}
 
-        payload = json.dumps({"hook": hook, "context": context})
-
         python = sys.executable
-        cmd = [python, str(plugin_path)]
+        # Harness plugins define named hooks. Keep the older stdin/stdout
+        # executable protocol for callers that supply a standalone plugin.
+        functions = {node.name for node in ast.parse(code).body
+                     if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))}
+        payload = json.dumps({"hook": hook, "context": context,
+                              **({"code": code} if functions else {})})
+        cmd = ([python, "-I", str(Path(__file__).with_name("plugin_worker.py"))]
+               if functions else [python, "-I", str(plugin_path)])
 
         env = {
             "PATH": os.environ.get("PATH", ""),
@@ -223,6 +234,14 @@ class PluginRunner:
                     "output": result.get("output"),
                     "error": result.get("error"),
                 }
+            except asyncio.CancelledError:
+                if proc.returncode is None:
+                    try:
+                        proc.kill()
+                    except ProcessLookupError:
+                        pass
+                await proc.wait()
+                raise
             except asyncio.TimeoutError:
                 proc.kill()
                 await proc.wait()
@@ -235,7 +254,8 @@ class PluginRunner:
                 return {
                     "success": False,
                     "output": None,
-                    "error": f"Plugin output not valid JSON: {exc}",
+                    "error": (f"Plugin output not valid JSON: {exc}; "
+                              f"stderr: {stderr.decode('utf-8', errors='replace')[:1000]}"),
                 }
         except Exception as exc:
             return {

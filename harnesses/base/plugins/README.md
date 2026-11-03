@@ -1,1 +1,1 @@
-Plugin definitions are inert reference artifacts. No network or arbitrary command execution is available.
+Plugins define synchronous `before_model_call`, `after_model_call`, `before_tool_call`, `after_tool_call`, or `before_task_complete` functions accepting one context dictionary. Hooks require trusted-code opt-in and an approved full harness SHA-256. Enable this only for reviewed code: Python subprocesses are not OS-isolated from the host filesystem. A before hook may return `{"block": true, "reason": "..."}`. Hook failures fail the run.
