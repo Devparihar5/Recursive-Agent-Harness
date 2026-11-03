@@ -14,6 +14,7 @@ This is a local implementation of contrastive, two-loop harness improvement. The
 
 ## Completed work
 
+- Audited the supplied Harness² paper against current code; findings and code evidence are in `PAPER_ALIGNMENT.md`. The base prompt length is consistent with the paper's sparse stock harness, but C5–C8 activation, `k=1` selection, cross-task adoption, and benchmark reproduction are materially incomplete (2026-11-03).
 - Diagnosed a live example run as `base, k=0` with source notes embedded in the task description, matching the Quick run action. Clarified example button labels and which execution settings apply to full improvement (2026-11-03).
 - Clarified the run progress header: base jobs now say `Base only · no improvement`, and the eyebrow says `RUN TYPE` rather than implying the mode is the current step. Saved parallel jobs still render their branch count (2026-11-03).
 - Fixed the harness loader's `safe_path` re-export after an import error exposed the missing binding; `tests/test_runtime.py` now imports that public name at collection time (2026-11-03).
@@ -38,7 +39,7 @@ This is a local implementation of contrastive, two-loop harness improvement. The
 
 ## Known issues and limitations
 
-- Harness subagents remain data-only; skills are activated by keyword at startup rather than through an on-demand tool. Script and plugin execution is now sandboxed via subprocess (AST-validated) through tool actions.
+- Harness subagents remain data-only; skills are activated by keyword at startup rather than through an on-demand tool. Script and plugin subprocess helpers exist, but harness script mounting and plugin dispatch are incomplete; AST checks do not provide OS-level isolation.
 - Library retrieval uses embedding similarity with a keyword fallback; the embedding service must be reachable for vector search (falls back gracefully).
 - There is no user review gate before composition or full manual library adoption flow yet (pending entries + adopt API exist; end-to-end UX pending).
 - Evaluation shows operational metrics and separate persisted model assessments. The optional rubric is sent only to the verifier, not the improvement pipeline. There is no hidden-test or dataset-specific ground-truth grader yet.

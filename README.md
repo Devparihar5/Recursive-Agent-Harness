@@ -50,8 +50,8 @@ Eight editable files matching the paper's C1–C8:
 | C4 | Tool guidance | `tool_guidance.md` | Every model call |
 | C5 | Subagents | `sub_agents/*/AGENT.md` | Inert — dispatch not yet implemented |
 | C6 | Skills | `skills/*/SKILL.md` | On keyword match at run start (on-demand `skill tool` not yet implemented) |
-| C7 | Scripts | `scripts/*.py` | Inert — sandbox execution not yet implemented |
-| C8 | Plugins / middleware | `plugins/*.py` | Inert — hook invocation not yet implemented |
+| C7 | Scripts | `scripts/*.py` | Subprocess helper exists; harness scripts are not mounted for agent execution |
+| C8 | Plugins / middleware | `plugins/*.py` | Hook action is incomplete; automatic middleware is not implemented |
 
 <p align="center">
   <img src="docs/assets/harness-components.svg" alt="Harness Components C1–C8" width="860"/>
