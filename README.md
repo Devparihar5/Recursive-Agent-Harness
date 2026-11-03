@@ -7,6 +7,12 @@
 
 A local Python and React project for running tasks, refining agent harnesses, and reusing evidence-backed lessons across tasks.
 
+## Dashboard demo
+
+![Dashboard walkthrough using sample data](docs/demo.gif)
+
+The walkthrough uses sample data.
+
 ## What it does
 
 An LLM agent's performance depends not only on the underlying model but on its **harness** —
