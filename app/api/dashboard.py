@@ -606,6 +606,19 @@ def register_dashboard_api(app, service):
     async def library():
         return service.library.list_entries()
 
+    @route("get", "/library/pending")
+    async def pending_entries():
+        return service.library.list_pending()
+
+    @route("post", "/library/{entry_id}/adopt")
+    async def adopt_entry(entry_id: str):
+        if not re.fullmatch(r"[0-9a-f]{32}", entry_id):
+            raise HTTPException(400, "Invalid entry identifier")
+        result = service.library.adopt(entry_id)
+        if result is None:
+            raise HTTPException(404, "Pending entry not found or already adopted")
+        return result
+
     @route("get", "/library/{entry_id}")
     async def entry(entry_id: str):
         result = service.library.inspect(entry_id)
@@ -689,5 +702,55 @@ def register_dashboard_api(app, service):
 
     @route("get", "/evaluation")
     async def evaluation():
+        from app.benchmark.runner import list_benchmark_results
+
         results = [read(path) for path in sorted(root.glob("*/pipeline.json"))]
-        return {"tasks": len(results), "runs": results, "metrics": [item.get("metrics", {}) for item in results]}
+        config = getattr(service, "config", None)
+        benchmark_root = getattr(config, "benchmark_results_root", Path("benchmark_results"))
+        benchmarks = list_benchmark_results(benchmark_root)
+        return {"tasks": len(results), "runs": results,
+                "metrics": [item.get("metrics", {}) for item in results],
+                "benchmark_results": benchmarks}
+
+    @route("post", "/tasks/{task_id}/verify")
+    async def verify_task(task_id: str, request: Request):
+        """Judge a finished deliverable without re-running or changing the pipeline."""
+        from app.benchmark.runner import BenchmarkRunner, list_benchmark_results
+        from app.benchmark.verifier import create_model_verifier
+
+        task = task_for(task_id)
+        pipeline_path = inside(root / safe(task_id) / "pipeline.json")
+        if not pipeline_path.is_file():
+            raise HTTPException(404, "Completed run not found")
+        pipeline_result = read(pipeline_path)
+        if (not pipeline_result.get("deliverable") or
+                not pipeline_result.get("selected_execution_id") or
+                (pipeline_result.get("mode") != "base" and
+                 pipeline_result.get("_checkpoint_stage"))):
+            raise HTTPException(409, "Run has no final deliverable to verify")
+        try:
+            data = await request.json()
+        except ValueError as exc:
+            raise HTTPException(400, "Expected a JSON object") from exc
+        if not isinstance(data, dict):
+            raise HTTPException(400, "Expected a JSON object")
+        rubric = data.get("rubric", "")
+        if not isinstance(rubric, str) or len(rubric) > 8000:
+            raise HTTPException(400, "Rubric must be text of at most 8000 characters")
+        if type(data.get("force", False)) is not bool:
+            raise HTTPException(400, "force must be a boolean")
+        config = service.config
+        results_root = config.benchmark_results_root
+        if not data.get("force"):
+            for existing in list_benchmark_results(results_root, task_id):
+                if (existing.get("pipeline_summary", {}).get("selected_execution_id") ==
+                        pipeline_result["selected_execution_id"] and
+                        type(existing.get("benchmark", {}).get("score")) in (int, float)):
+                    return existing
+        runner = BenchmarkRunner(verifier=create_model_verifier(config),
+                                 results_root=results_root)
+        result = await runner.verify_completed(
+            task, pipeline_result, verification_context={"rubric": rubric})
+        if result["benchmark"].get("label") == "error":
+            raise HTTPException(502, "Verifier failed; retry from Evaluation")
+        return result

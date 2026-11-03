@@ -13,20 +13,25 @@ This is the concise working backlog. The current implementation is described in 
 - [x] Run progress uses a readable phase timeline with live completion/current status and a narrow-screen list (2026-11-02).
 - [x] Tools evidence tab renders object-valued actions without crashing the page (2026-11-02).
 - [x] Architecture, design, memory, requirements, rules, and task documents created under `docs/` (2026-11-02).
+- [x] Isolated execution for C7 scripts and C8 plugins: sandboxed subprocess with AST validation, tool actions, and failure/timeout recording (2026-11-02).
+- [x] Embedding-based library retrieval: vector index with hybrid ranking and deterministic keyword fallback, plus retrieval tests (2026-11-02).
+- [x] External benchmark runner interface with private verifier context and separate result storage; fake-verifier tests cover data isolation (2026-11-03).
+- [x] Remove the Improvement library page from the dashboard, add a process health endpoint, and show saved benchmark results on Evaluation (2026-11-03).
+- [x] Show completed ordinary runs on Evaluation with an unverified status until an external score exists (2026-11-03).
+- [x] Connect a separate model judge to completed runs: optional private rubric, one-click scoring, persisted assessment, and no score feedback into improvement (2026-11-03).
 
 ## Pending
 
 | Priority | Task | Done when |
 | --- | --- | --- |
-| High | Design isolated execution for C7 scripts and C8 plugins | Untrusted candidate code runs only inside a restricted subprocess; failures and limits are recorded. |
-| High | Add embedding-based library retrieval | Entries have searchable vectors, with deterministic fallbacks and retrieval tests. |
-| High | Add external benchmark runner/verifier | Task-quality scores can be evaluated without leaking labels or grader output into improvement. |
-| High | Add user review and adoption flow | A user can inspect a baseline/composition and explicitly adopt an evidence-backed library entry. |
+| High | Add user review and adoption flow outside the removed library page | A user can inspect a baseline/composition and explicitly adopt an evidence-backed library entry. |
 | Medium | Dispatch harness subagents and invoke skills on demand | Both use explicit tools and respect their own execution boundaries. |
 | Medium | Add multi-task stream runner and resource budgets | A task list can run sequentially, and each probe has explicit turn/time/cost limits. |
 | Medium | Expand library inspection and management | Users can search/filter entries, inspect diffs against base, and remove or annotate entries. |
 
 ## Known bugs and verification gaps
 
-- [ ] Add tests for SSE terminal behavior after normal completion, composer evidence validation, editor retry fallback, retrieval ranking, run comparison, settings round-trip, and source upload.
+- [ ] The current Python AST gate is not a security boundary for untrusted scripts or plugins; subprocess execution needs OS-level isolation before accepting arbitrary candidate code.
+- [ ] Model assessments are subjective; add dataset-specific hidden tests or an independent ground-truth verifier before treating scores as benchmark correctness.
+- [ ] Add tests for SSE terminal behavior after normal completion, composer evidence validation, editor retry fallback, run comparison, settings round-trip, and source upload.
 - [ ] Revisit API-key storage: the settings endpoint currently writes a supplied key to local `.env` in plaintext.

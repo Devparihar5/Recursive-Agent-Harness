@@ -11,5 +11,6 @@ dist/
 *.egg-info/
 runs/
 improvement_library/
+benchmark_results/
 .omx/
 GAPS.md

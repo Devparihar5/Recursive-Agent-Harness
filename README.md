@@ -149,8 +149,7 @@ Open `http://localhost:5173`. Vite proxies `/api` to the FastAPI backend.
 | Live run | Pipeline graph with SSE updates; Output / Trajectory / Tools / Harness / Metrics / Candidates / Contrasts / Composition / Events tabs |
 | Harness diff | Monaco side-by-side diff of base vs. every candidate component |
 | Harness explorer | Browse harness versions and their files |
-| Improvement library | Browse and inspect saved experiences |
-| Evaluation | Operational metrics — latency, token usage, tool calls |
+| Evaluation | Completed runs, on-demand model assessments, and separate operational metrics |
 | Settings | Provider, model, base URL, API key |
 
 ---
@@ -229,3 +228,9 @@ establish task correctness. A candidate that produces a longer or more structure
 automatically better — that is why the `BlindSelector` evaluates anonymous deliverables against
 the task description, and why `Reflector` requires attributions to be grounded in quoted evidence.
 Benchmark scores are reserved for external evaluation and are never exposed to the improvement loop.
+
+To assess a completed dashboard run, open **Evaluation**, optionally enter a rubric, and select
+**Score with model**. The verifier uses `VERIFIER_MODEL` when set, otherwise the configured task
+model. Its score is stored under `BENCHMARK_RESULTS_ROOT` and is a model assessment, not a
+hidden-test correctness score. A custom `ExternalVerifier` can be supplied to the Python
+`BenchmarkRunner` for dataset-specific grading.

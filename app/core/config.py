@@ -14,9 +14,11 @@ class Settings(BaseModel):
     max_steps: int = 50
     max_tokens: int = 4096
     embedding_model: str = "nomic-embed-text:latest"
+    verifier_model: str = ""
     default_recursion_mode: str = "parallel"
     default_recursion_k: int = 1
     runs_root: Path = Path("runs")
+    benchmark_results_root: Path = Path("benchmark_results")
     harnesses_root: Path = Path("harnesses")
 
 
@@ -51,6 +53,8 @@ def get_settings() -> Settings:
         max_steps=int(setting("LLM_MAX_STEPS", "50")),
         max_tokens=int(setting("LLM_MAX_TOKENS", "4096")),
         embedding_model=setting("EMBEDDING_MODEL", "nomic-embed-text:latest"),
+        verifier_model=setting("VERIFIER_MODEL", ""),
         default_recursion_mode=setting("DEFAULT_RECURSION_MODE", "parallel"),
         default_recursion_k=int(setting("DEFAULT_RECURSION_K", "1")),
+        benchmark_results_root=Path(setting("BENCHMARK_RESULTS_ROOT", "benchmark_results")),
     )

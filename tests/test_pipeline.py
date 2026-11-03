@@ -1,5 +1,6 @@
 import asyncio
 import json
+from pathlib import Path
 
 from app.core.config import Settings
 from app.core.models import Task
@@ -116,11 +117,15 @@ def test_experience_retrieval_does_not_replace_base_harness(tmp_path):
         domain="customer_support", source_files=["source.txt"]), mode="parallel", k=1))
     assert first["library_entry"]
     assert first["deliverable"] == "candidate"
-    stored = pipeline.library.get(first["library_entry"])
-    assert (tmp_path / "library" / "customer_support" / "entry_001" /
-            "harness" / "guardrails.md").is_file()
+    pending = pipeline.library.list_pending()
+    assert len(pending) == 1
+    assert pending[0]["id"] == first["library_entry"]
+    assert pipeline.library.get(first["library_entry"]) is None
+    stored = pipeline.library.adopt(first["library_entry"])
+    assert stored is not None
+    assert (Path(stored["harness_path"]) / "guardrails.md").is_file()
     second = asyncio.run(pipeline.run(Task(task_id="second", description="Review source again",
         domain="customer_support", source_files=["source.txt"]), mode="parallel", k=1))
     assert second["base_harness_version"] == original_version
-    assert first["library_entry"] in second["retrieved_experiences"]
+    assert stored["id"] in second["retrieved_experiences"]
     assert stored["version"] != original_version

@@ -53,11 +53,21 @@ def _load_checkpoint(task_root: Path) -> dict | None:
 class Pipeline:
     def __init__(self, config: Settings | None = None, provider=None,
                  library_root: Path | str = "improvement_library",
-                 workspace_root: Path | str = "runs"):
+                 workspace_root: Path | str = "runs",
+                 embedder=None):
         self.config = config or get_settings()
         self.provider = provider or create_provider(self.config)
-        self.library = ImprovementLibrary(Path(library_root))
+        self.embedder = embedder or self._create_embedder()
+        self.library = ImprovementLibrary(Path(library_root), embedder=self.embedder)
         self.workspace_root = Path(workspace_root)
+
+    def _create_embedder(self):
+        """Create an EmbeddingClient from config."""
+        from app.library.embeddings import EmbeddingClient
+        model = getattr(self.config, "embedding_model", "nomic-embed-text:latest")
+        base_url = getattr(self.config, "base_url", "http://localhost:11434")
+        return EmbeddingClient(model=model, base_url=base_url)
+
 
     async def run_base(self, task, *, event_callback=None, resume: bool = False) -> dict:
         """Execute once with the common harness and skip improvement stages.
@@ -270,9 +280,10 @@ class Pipeline:
                                   "source_execution_id": selected_probe.execution.execution_id,
                                   "attributions": reflection.get("attributions", []),
                                   "components": sorted({a.get("component", "") for a in helped})}
-                    library_entry = self.library.add(selected_harness, experience,
+                    # Store as pending - user must explicitly adopt via API/UI
+                    library_entry = self.library.add_pending(selected_harness, experience,
                         domain=task.domain, task_shape=str(task.metadata.get("task_shape", task.domain)))
-                    await _emit(event_callback, "library.updated", task_id=task_id,
+                    await _emit(event_callback, "library.pending", task_id=task_id,
                                 entry_id=library_entry["id"])
             except Exception as exc:
                 reflection = {"error": str(exc), "lesson": "NO_ENTRY"}

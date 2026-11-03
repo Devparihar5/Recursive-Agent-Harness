@@ -1,7 +1,98 @@
 import asyncio
 import json
+from types import SimpleNamespace
 
 import pytest
+
+
+def test_health_endpoint_does_not_require_model_connection(tmp_path):
+    fastapi = pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient
+
+    from app.api.routes import create_app
+
+    app = create_app(type("Service", (), {"workspace_root": tmp_path})())
+    with TestClient(app) as client:
+        for path in ("/health", "/api/health"):
+            response = client.get(path)
+            assert response.status_code == 200
+            assert response.json() == {"status": "ok"}
+
+
+def test_evaluation_returns_saved_benchmarks_separately_from_run_metrics(tmp_path):
+    fastapi = pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient
+
+    from app.api.routes import create_app
+
+    results_root = tmp_path / "benchmarks"
+    results_root.mkdir()
+    (results_root / "result.json").write_text(json.dumps({
+        "task_id": "task-1", "run_at": "2026-11-03T00:00:00+00:00",
+        "mode": "base", "benchmark": {"score": 0.75, "label": "partial"},
+    }), encoding="utf-8")
+    (results_root / "invalid.json").write_text("not json", encoding="utf-8")
+    pipeline_root = tmp_path / "runs" / "task-2"
+    pipeline_root.mkdir(parents=True)
+    (pipeline_root / "pipeline.json").write_text(json.dumps({
+        "task_id": "task-2", "mode": "base", "selected_execution_id": "execution-2",
+        "deliverable": "Completed output", "metrics": {"executions": 1},
+        "_checkpoint_stage": "base_done",
+    }), encoding="utf-8")
+    service = SimpleNamespace(workspace_root=tmp_path / "runs",
+                              config=SimpleNamespace(benchmark_results_root=results_root))
+    with TestClient(create_app(service)) as client:
+        response = client.get("/api/evaluation")
+
+    assert response.status_code == 200
+    assert response.json()["benchmark_results"] == [{
+        "task_id": "task-1", "run_at": "2026-11-03T00:00:00+00:00",
+        "mode": "base", "benchmark": {"score": 0.75, "label": "partial"},
+    }]
+    assert response.json()["runs"][0]["selected_execution_id"] == "execution-2"
+    assert response.json()["metrics"] == [{"executions": 1}]
+
+
+def test_verify_completed_task_stores_score_without_restarting_pipeline(tmp_path, monkeypatch):
+    fastapi = pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient
+
+    from app.api.routes import create_app
+    from app.core.config import Settings
+
+    task_id = "completed-task"
+    task_root = tmp_path / "runs" / task_id
+    task_root.mkdir(parents=True)
+    (task_root / "task.json").write_text(json.dumps({
+        "task_id": task_id, "description": "Reply to a customer",
+    }), encoding="utf-8")
+    pipeline_result = {"task_id": task_id, "mode": "base", "k": 0,
+                       "selected_execution_id": "execution-1", "deliverable": "Reply",
+                       "_checkpoint_stage": "base_done", "metrics": {"executions": 1}}
+    pipeline_path = task_root / "pipeline.json"
+    pipeline_path.write_text(json.dumps(pipeline_result), encoding="utf-8")
+    seen = []
+
+    class Verifier:
+        async def verify(self, task_id, deliverable, task_text, metadata):
+            seen.append((task_id, deliverable, task_text, metadata))
+            return {"score": 0.7, "label": "partial", "kind": "model_assessment",
+                    "details": {"rationale": "Adequate reply"}}
+
+    monkeypatch.setattr("app.benchmark.verifier.create_model_verifier", lambda config: Verifier())
+    service = SimpleNamespace(workspace_root=tmp_path / "runs",
+                              config=Settings(benchmark_results_root=tmp_path / "benchmarks"))
+    with TestClient(create_app(service)) as client:
+        first = client.post(f"/api/tasks/{task_id}/verify", json={"rubric": "Be concise"})
+        second = client.post(f"/api/tasks/{task_id}/verify", json={"rubric": "Be concise"})
+        evaluation = client.get("/api/evaluation")
+
+    assert first.status_code == second.status_code == 200
+    assert first.json() == second.json()
+    assert seen == [(task_id, "Reply", "Reply to a customer", {"rubric": "Be concise"})]
+    assert evaluation.json()["benchmark_results"][0]["benchmark"]["score"] == 0.7
+    assert json.loads(pipeline_path.read_text(encoding="utf-8")) == pipeline_result
+    assert "Be concise" not in pipeline_path.read_text(encoding="utf-8")
 
 
 def test_examples_include_runnable_objectives_and_sources(tmp_path):

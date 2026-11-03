@@ -2,7 +2,7 @@
 
 ## Product experience
 
-The dashboard is a local workspace for creating tasks, watching improvement runs, inspecting evidence, exploring harnesses, and reviewing retained lessons. The interface should make model output and operational evidence inspectable without presenting either as proof of task correctness. See `frontend/src/App.tsx` and `frontend/src/style.css` for the current implementation.
+The dashboard is a local workspace for creating tasks, watching improvement runs, inspecting evidence, exploring harnesses, and viewing benchmark results. The interface should make model output and operational evidence inspectable without presenting either as proof of task correctness. See `frontend/src/App.tsx` and `frontend/src/style.css` for the current implementation.
 
 ## Visual system
 
@@ -30,13 +30,13 @@ The `[data-theme=dark]` rules in `style.css` supply dark colors. The theme toggl
 - Show full improvement as five plain-language phases and base-only execution as two phases. Highlight the current phase, mark completed and terminal phases, and update the activity text from SSE events. Use a compact React Flow timeline on desktop and a vertical list on narrow screens. Keep output, trajectory, tools, candidates, contrasts, composition, and events separately inspectable below.
 - Evidence list headings must be plain text. Tool actions are objects in API responses; show their action name as the heading and preserve the complete record in the detail body.
 - Show Cancel run as the live-run action while a job is running; replace it with Run improvement after the job reaches a terminal state.
-- Use Monaco's read-only side-by-side diff for harness changes. Preserve component names and source evidence in diff and library views.
+- Use Monaco's read-only side-by-side diff for harness changes. Preserve component names and source evidence in the diff view.
 - Make keyboard focus visible. Current focus styles use a two-pixel olive outline; icon-only controls need accessible labels.
 
 ## Main screens
 
-Overview, New task, Tasks, Runs, Live run, Harness explorer, Harness diff, Improvement library, Evaluation, and Model settings are routes in `App.tsx`. The New task route uses `NewTask.tsx` to show bundled examples and a custom form. Custom task creation accepts an objective, domain, file uploads, recursion mode, width/depth `k`, model, and execution limits. The UI does not ask users for server-side file paths. The API supplies persisted data; the UI should not invent successful runs or quality scores.
+Overview, New task, Tasks, Runs, Live run, Harness explorer, Harness diff, Evaluation, and Model settings are routes in `App.tsx`. The New task route uses `NewTask.tsx` to show bundled examples and a custom form. Custom task creation accepts an objective, domain, file uploads, recursion mode, width/depth `k`, model, and execution limits. The UI does not ask users for server-side file paths. Evaluation shows completed runs as unverified until an external verifier records a score, alongside separate operational metrics. The UI does not invent successful runs or quality scores.
 
 ## Current design gaps
 
-The product concept's baseline-first review and manual library adoption are not implemented. The Evaluation page shows operational metrics but no external benchmark results. Track implementation in `Tasks.md`.
+The product concept's baseline-first review is not implemented. The library page has been removed from the dashboard; pending entries and adoption remain available through the API. Evaluation can score completed runs with a separate model judge and optional rubric; the UI must label these as model assessments rather than ground truth. Track implementation in `Tasks.md`.

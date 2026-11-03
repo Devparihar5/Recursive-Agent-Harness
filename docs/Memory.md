@@ -14,6 +14,11 @@ This is a local implementation of contrastive, two-loop harness improvement. The
 
 ## Completed work
 
+- Connected a separate model judge to saved completed runs through `POST /api/tasks/{task_id}/verify`. Evaluation offers an optional rubric and a score action, then reads the persisted assessment. The rubric and score stay out of task and pipeline records. A live Ollama call scored a saved run successfully; model scores remain subjective assessments (2026-11-03).
+- Evaluation now lists completed ordinary runs as unverified, so a completed task appears even before external scoring. Real verifier scores remain distinct; ordinary completion does not imply task correctness (2026-11-03).
+- Removed the Improvement library dashboard page and overview count while retaining the library backend. Added `/health` and `/api/health`. Evaluation now reads persisted external benchmark results from `BENCHMARK_RESULTS_ROOT` and displays actual scores separately from operational metrics (2026-11-03).
+- Added a Python benchmark runner interface that passes private verification context only to a verifier, stores scores outside `runs/`, and has isolation tests. No real verifier adapter is configured (2026-11-03).
+- Repaired script path escape checks and awaited script/plugin tool actions within the executor. Fixed pending library adoption so it accepts a stored harness path and preserved its version; retrieval tests now adopt before expecting reuse. Fixed synchronous embeddings inside an active event loop (2026-11-03).
 - Implemented baseline execution, parallel and sequential improvement, candidate validation, composition, blind selection, reflection, and conditional library retention.
 - Added a local dashboard with task creation, run inspection, harness diff/explorer, library, evaluation metrics, and model settings.
 - Added scripted-provider pipeline tests, runtime/path tests, and basic API tests in `tests/`.
@@ -28,10 +33,10 @@ This is a local implementation of contrastive, two-loop harness improvement. The
 
 ## Known issues and limitations
 
-- Harness subagents, scripts, and plugins are data-only; skills are activated by keyword at startup rather than through an on-demand tool.
-- Library retrieval uses lexical ranking, not embeddings. LanceDB currently indexes metadata only.
-- There is no user review gate before composition or manual library adoption flow.
-- The dashboard evaluation view contains operational metrics; there is no benchmark runner or external verifier.
+- Harness subagents remain data-only; skills are activated by keyword at startup rather than through an on-demand tool. Script and plugin execution is now sandboxed via subprocess (AST-validated) through tool actions.
+- Library retrieval uses embedding similarity with a keyword fallback; the embedding service must be reachable for vector search (falls back gracefully).
+- There is no user review gate before composition or full manual library adoption flow yet (pending entries + adopt API exist; end-to-end UX pending).
+- Evaluation shows operational metrics and separate persisted model assessments. The optional rubric is sent only to the verifier, not the improvement pipeline. There is no hidden-test or dataset-specific ground-truth grader yet.
 - A full improvement run makes multiple model calls across baseline, proposal, probe, composition, selection, and reflection stages. The local `qwen3.5:4b` model running on CPU can take several minutes even for the baseline.
 - `PUT /settings` writes an API key to local `.env` in plaintext when one is supplied. Treat this as a known local security limitation.
 

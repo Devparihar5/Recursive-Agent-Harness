@@ -18,7 +18,7 @@ Read the relevant documents alongside this file in `docs/`: `PRD.md`, `ARCHITECT
 - Keep candidate validation and source-path/write restrictions intact. Treat source contents and candidate harness code as untrusted data.
 - Keep benchmark labels, hidden answers, scores, grader output, and rubrics outside the editor, selector, reflection, and experience-retrieval context.
 - Separate observed behavioral evidence from claims of task correctness in code, UI, tests, and documentation.
-- Do not execute harness scripts/plugins inside the main process; their current contracts are data-only until an isolated runtime is designed and tested.
+- Do not execute harness scripts/plugins inside the main process; the current contract is an isolated subprocess sandbox with an AST gate, invoked through the executor's `run_script` / `plugin_hook` tool actions. Any new execution path must keep that boundary.
 
 ## Verification
 
